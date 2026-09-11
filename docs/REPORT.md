@@ -162,7 +162,33 @@ same wells. The live-neuron density and viability it measures are the structural
 
 ### 3.5 Oriented-circuit twin and in-silico chip design
 
-[TBD: two-compartment chip with forward/backward axon-crossing probabilities, as in axon-diode devices.]
+CellShells' founding lab builds oriented neuronal circuits with "axon diodes": two culture chambers joined by
+asymmetric microchannels that let axons grow in one direction far more easily than in the other (Peyrin et
+al. 2011). The simulator has a two-chamber mode (`ChipConfig(compartments=2)`) that mirrors this geometry:
+
+- **Somata and local wiring.** Somata are excluded from a 400 µm barrier strip in the middle of the chip,
+  and local distance-dependent wiring stays within each chamber.
+- **Channel crossings.** Each neuron in chamber A sends on average p_fwd·k_cross axons into chamber B, and
+  each neuron in B sends p_bwd·k_cross axons into A (k_cross = 20). Axon targets are drawn near the channel
+  exit, with an exponential decay length of 300 µm.
+- **Recording.** Electrodes over the barrier record no somata. This leaves 22 electrodes per chamber on the
+  standard 60-electrode layout.
+
+A single-chamber regression test confirms that the one-chamber model is unchanged by this extension.
+
+**Directional signature.** Population events are detected on the smoothed total population rate (5-ms bins).
+For each event, each chamber's onset is the first time its rate rises a quarter of the way from baseline to
+its event peak. From these onsets the signature records:
+
+- the fraction of events recruiting one or both chambers;
+- the fractions of two-chamber events led by A or by B;
+- a directionality index;
+- the signed median onset lag;
+- the lag of the peak of the chambers' rate cross-correlation;
+- the chamber rate ratio and the cross-chamber synchrony.
+
+[TBD: validation on simulated ground truth; amortised inference of (p_fwd, p_bwd); design map of
+directionality versus channel asymmetry; recording length needed to detect directionality.]
 
 ## 4. Experiments and results
 
