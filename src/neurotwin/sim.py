@@ -6,6 +6,9 @@ depression (terminates network bursts), spike-frequency adaptation and a noisy b
 Virtual electrodes pick up spikes of neurons within `pickup_um` of their centre, giving multi-unit spike
 trains in the same (time, electrode) format as real MEA recordings.
 
+Optionally the chip has two chambers separated by a microchannel barrier (axon-diode design): axons cross
+with separate forward/backward probabilities and a conduction delay.
+
 The inner loop is event-driven and compiled with numba; simulations run in parallel over CPU cores.
 """
 from dataclasses import dataclass
@@ -62,8 +65,9 @@ class ChipConfig:
     t_ref_ms: float = 2.0
     compartments: int = 1       # 2 = two chambers joined by microchannels (axon-diode chip)
     barrier_um: float = 400.0   # width of the microchannel barrier strip (no somata)
-    k_cross: float = 20.0       # mean cross-chamber targets per neuron when the crossing probability is 1
+    k_cross: float = 4.0        # mean cross-chamber targets per neuron when the crossing probability is 1
     exit_um: float = 300.0      # spread of crossing axons beyond the channel exit
+    cross_delay_ms: float = 5.0  # conduction + synaptic delay of axons crossing the channels
 
     def chamber_of_electrodes(self):
         """0 = left chamber (A), 1 = right chamber (B), -1 = over the barrier."""
@@ -92,7 +96,7 @@ def build_network(theta_row, cfg, rng, cross=None):
 
     For two-chamber chips (cfg.compartments == 2) somata avoid the barrier strip, local wiring stays within a
     chamber, and axons cross through the channels with probability cross = (p_fwd: A->B, p_bwd: B->A),
-    landing preferentially near the channel exit.
+    landing preferentially near the channel exit. Returns a per-synapse flag marking crossing synapses.
     """
     p = dict(zip(PARAM_NAMES, theta_row))
     N = cfg.n_neurons
@@ -119,6 +123,7 @@ def build_network(theta_row, cfg, rng, cross=None):
     conn = rng.random((N, N)) < prob
     pre, post = np.nonzero(conn.T)                                           # sorted by presynaptic neuron
     w = np.where(pre < n_exc, p["j_e"], -p["g_ie"] * p["j_e"]).astype(np.float64)
+    is_cross = (comp[pre] != comp[post]).astype(np.int64) if two else np.zeros(len(pre), np.int64)
     ptr = np.zeros(N + 1, np.int64)
     np.add.at(ptr, pre + 1, 1)
     ptr = np.cumsum(ptr)
@@ -127,14 +132,14 @@ def build_network(theta_row, cfg, rng, cross=None):
     nearest = de.argmin(1)
     elec_of = np.where(de[np.arange(N), nearest] < cfg.pickup_um, nearest, -1).astype(np.int64)
     mu_vec = p["mu"] + p["mu_sd"] * rng.standard_normal(N)                 # heterogeneous excitability
-    return ptr, post.astype(np.int64), w, elec_of, mu_vec
+    return ptr, post.astype(np.int64), w, elec_of, mu_vec, is_cross
 
 
 _CACHE = "__file__" in globals()   # numba's on-disk cache needs a source file (not available under exec)
 
 
 @njit(cache=_CACHE)
-def _run_one(n_steps, n_warm, dt, ptr, idx, w, elec_of, u, tau_rec, b_a, tau_a, mu_vec, sigma,
+def _run_one(n_steps, n_warm, dt, ptr, idx, w, is_x, xdel, elec_of, u, tau_rec, b_a, tau_a, mu_vec, sigma,
              tau_m, v_rest, v_th, v_reset, ref_steps, seed, out_e, out_t):
     np.random.seed(seed)
     N = elec_of.shape[0]
@@ -148,6 +153,7 @@ def _run_one(n_steps, n_warm, dt, ptr, idx, w, elec_of, u, tau_rec, b_a, tau_a, 
     ref = np.zeros(N, np.int64)
     inp = np.zeros(N)
     nxt = np.zeros(N)
+    ring = np.zeros((xdel + 1, N))      # delayed input from channel-crossing synapses
     max_ev = out_e.shape[0]
     n_ev = 0
     for t in range(n_steps):
@@ -155,6 +161,11 @@ def _run_one(n_steps, n_warm, dt, ptr, idx, w, elec_of, u, tau_rec, b_a, tau_a, 
         inp = nxt
         nxt = tmp
         nxt[:] = 0.0
+        if xdel > 0:
+            slot = t % (xdel + 1)
+            for i in range(N):
+                inp[i] += ring[slot, i]
+                ring[slot, i] = 0.0
         for i in range(N):
             if ref[i] > 0:
                 ref[i] -= 1
@@ -169,7 +180,10 @@ def _run_one(n_steps, n_warm, dt, ptr, idx, w, elec_of, u, tau_rec, b_a, tau_a, 
                     eff = u * x[i]
                     x[i] -= eff
                     for k in range(ptr[i], ptr[i + 1]):
-                        nxt[idx[k]] += w[k] * eff
+                        if is_x[k]:
+                            ring[(t + xdel) % (xdel + 1), idx[k]] += w[k] * eff
+                        else:
+                            nxt[idx[k]] += w[k] * eff
                     if t >= n_warm and elec_of[i] >= 0 and n_ev < max_ev:
                         out_e[n_ev] = elec_of[i]
                         out_t[n_ev] = (t - n_warm) * dt / 1000.0
@@ -180,12 +194,12 @@ def _run_one(n_steps, n_warm, dt, ptr, idx, w, elec_of, u, tau_rec, b_a, tau_a, 
 
 
 @njit(parallel=True, cache=_CACHE)
-def _run_batch(n_steps, n_warm, dt, ptrs, idx_all, w_all, off, elec_of, mu_vecs, pars, fixed, seeds,
-               out_e, out_t, out_n):
+def _run_batch(n_steps, n_warm, dt, ptrs, idx_all, w_all, isx_all, xdel, off, elec_of, mu_vecs, pars, fixed,
+               seeds, out_e, out_t, out_n):
     for b in prange(pars.shape[0]):
         lo, hi = off[b], off[b + 1]
-        out_n[b] = _run_one(n_steps, n_warm, dt, ptrs[b], idx_all[lo:hi], w_all[lo:hi], elec_of[b],
-                            pars[b, 0], pars[b, 1], pars[b, 2], pars[b, 3], mu_vecs[b], pars[b, 4],
+        out_n[b] = _run_one(n_steps, n_warm, dt, ptrs[b], idx_all[lo:hi], w_all[lo:hi], isx_all[lo:hi], xdel,
+                            elec_of[b], pars[b, 0], pars[b, 1], pars[b, 2], pars[b, 3], mu_vecs[b], pars[b, 4],
                             fixed[0], fixed[1], fixed[2], fixed[3], np.int64(fixed[4]), seeds[b],
                             out_e[b], out_t[b])
 
@@ -205,6 +219,8 @@ def simulate(theta, cfg=ChipConfig(), duration_s=120.0, warmup_s=5.0, seed=0, ma
     off = np.concatenate([[0], np.cumsum(sizes)])
     idx_all = np.concatenate([n[1] for n in nets])
     w_all = np.concatenate([n[2] for n in nets])
+    isx_all = np.concatenate([n[5] for n in nets])
+    xdel = max(1, int(round(cfg.cross_delay_ms / cfg.dt_ms))) if cfg.compartments == 2 else 0
     elec_of = np.stack([n[3] for n in nets])
     mu_vecs = np.stack([n[4] for n in nets])
     ix = [PARAM_NAMES.index(k) for k in ("u_std", "tau_rec", "b_adapt", "tau_adapt", "sigma")]
@@ -218,6 +234,6 @@ def simulate(theta, cfg=ChipConfig(), duration_s=120.0, warmup_s=5.0, seed=0, ma
     n_warm = int(warmup_s * 1000 / cfg.dt_ms)
     n_steps = n_warm + int(duration_s * 1000 / cfg.dt_ms)
     seeds = rng.integers(0, 2**31 - 1, B)
-    _run_batch(n_steps, n_warm, cfg.dt_ms, ptrs, idx_all, w_all, off, elec_of, mu_vecs, pars, fixed, seeds,
-               out_e, out_t, out_n)
+    _run_batch(n_steps, n_warm, cfg.dt_ms, ptrs, idx_all, w_all, isx_all, xdel, off, elec_of, mu_vecs, pars,
+               fixed, seeds, out_e, out_t, out_n)
     return [(out_e[b, :out_n[b]].copy(), out_t[b, :out_n[b]].copy()) for b in range(B)]
