@@ -612,6 +612,8 @@ def main():
     if not real_files:
         print("no real feature table attached; done"); return
     df = pd.read_csv(real_files[0])
+    if "file" not in df:
+        df["file"] = df[["plating", "culture", "div"]].astype(str).agg("-".join, axis=1)
     xr = df[FEATURE_NAMES].to_numpy(np.float32)
     thr = np.quantile(out_of_support_scores(x[tr], x[te]), 0.99)
     df["oos_score"] = out_of_support_scores(x[tr], xr)
