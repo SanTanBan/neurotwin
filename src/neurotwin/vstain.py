@@ -61,7 +61,10 @@ def percentile_norm(img, lo=1.0, hi=99.9, ref=None):
 def predict_tiled(model, stack, tile=512, overlap=64, device="cpu"):
     """Predict mean and std for a whole image [C, H, W] with overlapping tiles (cosine blending)."""
     model.eval()
-    C, H, W = stack.shape
+    C, H0, W0 = stack.shape
+    H, W = max(tile, H0), max(tile, W0)             # images smaller than a tile are reflect-padded
+    if (H, W) != (H0, W0):
+        stack = np.pad(stack, ((0, 0), (0, H - H0), (0, W - W0)), mode="reflect")
     step = tile - overlap
     w1 = np.hanning(tile + 2)[1:-1]
     win = torch.tensor(np.outer(w1, w1), dtype=torch.float32, device=device) + 1e-3
@@ -77,7 +80,8 @@ def predict_tiled(model, stack, tile=512, overlap=64, device="cpu"):
             acc_m[:, y0:y0 + tile, x0:x0 + tile] += m[0] * win
             acc_v[:, y0:y0 + tile, x0:x0 + tile] += torch.exp(lv[0]) * win
             acc_w[y0:y0 + tile, x0:x0 + tile] += win
-    return (acc_m / acc_w).cpu().numpy(), np.sqrt((acc_v / acc_w).cpu().numpy())
+    mean, std = (acc_m / acc_w).cpu().numpy(), np.sqrt((acc_v / acc_w).cpu().numpy())
+    return mean[:, :H0, :W0], std[:, :H0, :W0]
 
 
 def pearson(a, b):
@@ -90,13 +94,26 @@ def interval_coverage(target, mean, std, z=1.645):
     return float((np.abs(target - mean) <= z * std).mean())
 
 
-def count_nuclei(dapi, sigma=2.0, rel_thresh=0.25, min_dist=4):
-    """Nuclei = local maxima of the smoothed nuclear stain above a relative threshold. Returns (y, x) peaks."""
+def nuclei_threshold(dapi, sigma=2.0, k_mad=5.0):
+    """Detection threshold from the image's own background: max(Otsu, median + k * robust noise)."""
+    from skimage.filters import threshold_otsu
     s = ndimage.gaussian_filter(dapi, sigma)
-    thr = rel_thresh * np.percentile(s, 99.5)
+    med = np.median(s)
+    mad = 1.4826 * np.median(np.abs(s - med))
+    return float(max(threshold_otsu(s), med + k_mad * mad))
+
+
+def count_nuclei(dapi, sigma=2.0, min_dist=5, thr=None):
+    """Nuclei = local maxima of the smoothed nuclear stain above a background-derived threshold.
+
+    Pass `thr` to reuse one threshold across images (e.g. across draws of a predictive distribution).
+    Returns the (y, x) peak coordinates.
+    """
+    s = ndimage.gaussian_filter(dapi, sigma)
+    if thr is None:
+        thr = nuclei_threshold(dapi, sigma)
     mx = ndimage.maximum_filter(s, size=2 * min_dist + 1)
-    peaks = np.argwhere((s == mx) & (s > thr))
-    return peaks
+    return np.argwhere((s == mx) & (s > thr))
 
 
 def dead_fraction(peaks, dead, rel_thresh=0.3, radius=3):
@@ -111,18 +128,20 @@ def dead_fraction(peaks, dead, rel_thresh=0.3, radius=3):
 def readouts_with_intervals(mean, std, n_draws=20, rng=0):
     """Nuclei count and dead fraction from the predicted stains, with 90% intervals from pixel sampling.
 
-    Sampling uses spatially smooth noise (the per-pixel std modulates a smoothed white-noise field), so the
-    interval reflects uncertainty at the scale of a nucleus rather than independent pixel noise.
+    Draws add spatially smooth noise (the per-pixel std modulates a smoothed white-noise field), so the
+    interval reflects uncertainty at the scale of a nucleus rather than independent pixel noise. The
+    detection threshold is fixed from the mean prediction so every draw is scored the same way; the reported
+    estimate is the median over draws, which keeps it inside its own interval.
     """
     g = np.random.default_rng(rng)
+    thr = nuclei_threshold(mean[0])
     counts, fracs = [], []
     for _ in range(n_draws):
         eps = ndimage.gaussian_filter(g.standard_normal(mean.shape[1:]), 2.0)
         eps /= eps.std() + 1e-9
         d = mean + std * eps[None]
-        p = count_nuclei(d[0])
+        p = count_nuclei(d[0], thr=thr)
         counts.append(len(p)); fracs.append(dead_fraction(p, d[1]))
-    p = count_nuclei(mean[0])
-    return {"count": len(p), "count_lo": float(np.percentile(counts, 5)), "count_hi": float(np.percentile(counts, 95)),
-            "dead_frac": dead_fraction(p, mean[1]), "dead_lo": float(np.percentile(fracs, 5)),
-            "dead_hi": float(np.percentile(fracs, 95))}
+    return {"count": float(np.median(counts)), "count_lo": float(np.percentile(counts, 5)),
+            "count_hi": float(np.percentile(counts, 95)), "dead_frac": float(np.median(fracs)),
+            "dead_lo": float(np.percentile(fracs, 5)), "dead_hi": float(np.percentile(fracs, 95))}
