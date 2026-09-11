@@ -191,8 +191,24 @@ its event peak. From these onsets the signature records:
 - the lag of the peak of the chambers' rate cross-correlation;
 - the chamber rate ratio and the cross-chamber synchrony.
 
-[TBD: validation on simulated ground truth; amortised inference of (p_fwd, p_bwd); design map of
-directionality versus channel asymmetry; recording length needed to detect directionality.]
+**First validation on simulated ground truth.** Base parameters were set to a realistic bursting regime, and
+each configuration was run with 3 network seeds and 180-s recordings; values are mean ± standard deviation
+across seeds.
+
+| Configuration | Median B−A onset lag | Burst-leader index | Events recruiting both chambers | Cross-chamber synchrony |
+|---|---|---|---|---|
+| Forward diode (p_fwd 0.9, p_bwd 0.05) | +34 ± 24 ms | +0.19 ± 0.16 | 67% | 0.82 |
+| Reversed diode (p_fwd 0.05, p_bwd 0.9) | −40 ± 35 ms | −0.58 ± 0.47 | 42% | 0.68 |
+| Symmetric (0.5 / 0.5) | +16 ± 121 ms | −0.07 ± 0.35 | 80% | 0.96 |
+| Disconnected | — | — | 2% | −0.01 |
+
+The signed onset lag recovers the direction of the engineered connectivity, and disconnected chambers are
+correctly found to be independent. The leader index has the right sign but is noisier. A single recording is
+therefore a noisy estimate of direction, which is why amortised inference combines all directional and global
+statistics and reports its uncertainty on (p_fwd, p_bwd).
+
+[TBD: posterior recovery of (p_fwd, p_bwd); dependence on recording length; design map of directionality
+versus channel asymmetry.]
 
 ## 4. Experiments and results
 
