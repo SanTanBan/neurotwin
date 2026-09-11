@@ -1,0 +1,7 @@
+numpy>=1.26
+scipy>=1.11
+pandas>=2.0
+matplotlib>=3.8
+numba>=0.59
+torch>=2.2
+sbi==0.27.0
