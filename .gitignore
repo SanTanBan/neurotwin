@@ -15,3 +15,4 @@ checkpoints/
 video/build/
 .env
 kaggle/*/shards/
+sbi-logs/
