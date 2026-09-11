@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+data/
+runs/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.zip
+*.tif
+*.tiff
+*.h5
+*.nwb
+video/build/
+.env
