@@ -35,9 +35,9 @@ def wait(slug, poll=20, timeout=12 * 3600):
     return "TIMEOUT"
 
 
-def fetch(slug, out):
+def fetch(slug, out, pattern=None):
     os.makedirs(out, exist_ok=True)
-    kaggle("kernels", "output", slug, "-p", out)
+    kaggle("kernels", "output", slug, "-p", out, *(["--file-pattern", pattern] if pattern else []))
     log = os.path.join(out, slug.split("/")[1] + ".log")
     if not os.path.exists(log):
         return "(no log found)"
