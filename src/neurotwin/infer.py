@@ -39,7 +39,9 @@ def train_npe(theta, x, density_estimator="nsf", seed=0, **train_kw):
 def sample_z(posterior, X, n=500):
     """Samples in prior-uniform space for many observations: ([n, m, d] clipped, leakage [m])."""
     X = np.atleast_2d(np.asarray(X, dtype=np.float32))
-    s = posterior.sample_batched((n,), x=_t(X), show_progress_bars=False, reject_outside_prior=False).numpy()
+    with torch.no_grad():
+        s = posterior.sample_batched((n,), x=_t(X), show_progress_bars=False,
+                                     reject_outside_prior=False).detach().numpy()
     leak = np.mean(np.any((s < Z_LO) | (s > Z_HI), axis=2), axis=0)
     return np.clip(s, Z_LO, Z_HI), leak
 

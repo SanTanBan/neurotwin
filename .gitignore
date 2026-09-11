@@ -14,3 +14,4 @@ checkpoints/
 *.nwb
 video/build/
 .env
+kaggle/*/shards/

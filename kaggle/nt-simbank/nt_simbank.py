@@ -43,13 +43,14 @@ from numba import njit, prange
 
 # Parameters inferred by the digital twin: (low, high, scale). "log" = log-uniform prior.
 PRIOR_BOUNDS = {
-    "j_e": (0.5, 6.0, "log"),         # mV, EPSP of a fully recovered excitatory synapse
+    "j_e": (0.5, 20.0, "log"),        # mV, EPSP of a fully recovered excitatory synapse
     "g_ie": (0.25, 4.0, "log"),       # inhibition/excitation ratio: IPSP = g_ie * j_e
-    "u_std": (0.05, 0.8, "lin"),      # release probability: fraction of synaptic resources used per spike
-    "tau_rec": (0.2, 8.0, "log"),     # s, recovery time constant of synaptic resources
+    "u_std": (0.02, 0.8, "log"),      # release probability: fraction of synaptic resources used per spike
+    "tau_rec": (0.2, 10.0, "log"),    # s, recovery time constant of synaptic resources
     "b_adapt": (0.0, 3.0, "lin"),     # mV, steady-state hyperpolarisation added per spike (adaptation)
-    "tau_adapt": (0.5, 20.0, "log"),  # s, adaptation decay time constant
+    "tau_adapt": (0.5, 30.0, "log"),  # s, adaptation decay time constant
     "mu": (0.0, 14.0, "lin"),         # mV, mean background drive above rest (threshold is 15 mV above rest)
+    "mu_sd": (0.0, 4.0, "lin"),       # mV, neuron-to-neuron spread of the drive (intrinsic excitability)
     "sigma": (1.0, 6.0, "lin"),       # mV, stationary std of membrane noise
     "lambda_um": (100.0, 3000.0, "log"),  # um, connection length scale
 }
@@ -79,7 +80,7 @@ class ChipConfig:
     grid: int = 8               # 8x8 layout with corners removed -> 60 electrodes (MCS-style 60MEA)
     pitch_um: float = 200.0
     drop_corners: bool = True
-    pickup_um: float = 60.0
+    pickup_um: float = 80.0     # ~3 neurons per electrode on average -> multi-unit activity
     k_out: float = 40.0         # mean out-degree
     dt_ms: float = 1.0
     tau_m_ms: float = 20.0
@@ -125,14 +126,15 @@ def build_network(theta_row, cfg, rng):
     de = np.sqrt(((pos[:, None, :] - elec[None, :, :]) ** 2).sum(-1))       # [neuron, electrode]
     nearest = de.argmin(1)
     elec_of = np.where(de[np.arange(N), nearest] < cfg.pickup_um, nearest, -1).astype(np.int64)
-    return ptr, post.astype(np.int64), w, elec_of
+    mu_vec = p["mu"] + p["mu_sd"] * rng.standard_normal(N)                 # heterogeneous excitability
+    return ptr, post.astype(np.int64), w, elec_of, mu_vec
 
 
 _CACHE = "__file__" in globals()   # numba's on-disk cache needs a source file (not available under exec)
 
 
 @njit(cache=_CACHE)
-def _run_one(n_steps, n_warm, dt, ptr, idx, w, elec_of, u, tau_rec, b_a, tau_a, mu, sigma,
+def _run_one(n_steps, n_warm, dt, ptr, idx, w, elec_of, u, tau_rec, b_a, tau_a, mu_vec, sigma,
              tau_m, v_rest, v_th, v_reset, ref_steps, seed, out_e, out_t):
     np.random.seed(seed)
     N = elec_of.shape[0]
@@ -158,7 +160,7 @@ def _run_one(n_steps, n_warm, dt, ptr, idx, w, elec_of, u, tau_rec, b_a, tau_a, 
                 ref[i] -= 1
                 v[i] = v_reset
             else:
-                vinf = v_rest + mu - a[i]
+                vinf = v_rest + mu_vec[i] - a[i]
                 v[i] = vinf + (v[i] - vinf) * decay_m + inp[i] + noise_step * np.random.standard_normal()
                 if v[i] >= v_th:
                     v[i] = v_reset
@@ -178,11 +180,12 @@ def _run_one(n_steps, n_warm, dt, ptr, idx, w, elec_of, u, tau_rec, b_a, tau_a, 
 
 
 @njit(parallel=True, cache=_CACHE)
-def _run_batch(n_steps, n_warm, dt, ptrs, idx_all, w_all, off, elec_of, pars, fixed, seeds, out_e, out_t, out_n):
+def _run_batch(n_steps, n_warm, dt, ptrs, idx_all, w_all, off, elec_of, mu_vecs, pars, fixed, seeds,
+               out_e, out_t, out_n):
     for b in prange(pars.shape[0]):
         lo, hi = off[b], off[b + 1]
         out_n[b] = _run_one(n_steps, n_warm, dt, ptrs[b], idx_all[lo:hi], w_all[lo:hi], elec_of[b],
-                            pars[b, 0], pars[b, 1], pars[b, 2], pars[b, 3], pars[b, 4], pars[b, 5],
+                            pars[b, 0], pars[b, 1], pars[b, 2], pars[b, 3], mu_vecs[b], pars[b, 4],
                             fixed[0], fixed[1], fixed[2], fixed[3], np.int64(fixed[4]), seeds[b],
                             out_e[b], out_t[b])
 
@@ -203,7 +206,8 @@ def simulate(theta, cfg=ChipConfig(), duration_s=120.0, warmup_s=5.0, seed=0, ma
     idx_all = np.concatenate([n[1] for n in nets])
     w_all = np.concatenate([n[2] for n in nets])
     elec_of = np.stack([n[3] for n in nets])
-    ix = [PARAM_NAMES.index(k) for k in ("u_std", "tau_rec", "b_adapt", "tau_adapt", "mu", "sigma")]
+    mu_vecs = np.stack([n[4] for n in nets])
+    ix = [PARAM_NAMES.index(k) for k in ("u_std", "tau_rec", "b_adapt", "tau_adapt", "sigma")]
     pars = np.ascontiguousarray(theta[:, ix])
     fixed = np.array([cfg.tau_m_ms, cfg.v_rest, cfg.v_thresh, cfg.v_reset, round(cfg.t_ref_ms / cfg.dt_ms)])
     n_elec = len(cfg.electrodes())
@@ -214,7 +218,7 @@ def simulate(theta, cfg=ChipConfig(), duration_s=120.0, warmup_s=5.0, seed=0, ma
     n_warm = int(warmup_s * 1000 / cfg.dt_ms)
     n_steps = n_warm + int(duration_s * 1000 / cfg.dt_ms)
     seeds = rng.integers(0, 2**31 - 1, B)
-    _run_batch(n_steps, n_warm, cfg.dt_ms, ptrs, idx_all, w_all, off, elec_of, pars, fixed, seeds,
+    _run_batch(n_steps, n_warm, cfg.dt_ms, ptrs, idx_all, w_all, off, elec_of, mu_vecs, pars, fixed, seeds,
                out_e, out_t, out_n)
     return [(out_e[b, :out_n[b]].copy(), out_t[b, :out_n[b]].copy()) for b in range(B)]
 
