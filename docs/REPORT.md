@@ -169,8 +169,12 @@ al. 2011). The simulator has a two-chamber mode (`ChipConfig(compartments=2)`) t
 - **Somata and local wiring.** Somata are excluded from a 400 µm barrier strip in the middle of the chip,
   and local distance-dependent wiring stays within each chamber.
 - **Channel crossings.** Each neuron in chamber A sends on average p_fwd·k_cross axons into chamber B, and
-  each neuron in B sends p_bwd·k_cross axons into A (k_cross = 20). Axon targets are drawn near the channel
-  exit, with an exponential decay length of 300 µm.
+  each neuron in B sends p_bwd·k_cross axons into A (k_cross = 4, i.e. crossings are sparse relative to the
+  40 local connections, as channel capacity limits how many axons cross). Axon targets are drawn near the
+  channel exit, with an exponential decay length of 300 µm. Crossing synapses act after a 5 ms conduction
+  and synaptic delay (a ring buffer in the event-driven loop); local synapses act on the next 1 ms step.
+  A first version with 20 undelayed crossings per neuron fused the two chambers into one network, so that no
+  onset measure could tell which chamber led.
 - **Recording.** Electrodes over the barrier record no somata. This leaves 22 electrodes per chamber on the
   standard 60-electrode layout.
 
