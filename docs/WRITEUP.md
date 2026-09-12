@@ -26,13 +26,21 @@ full posterior over nine interpretable biophysical parameters in milliseconds. T
 by simulation-based calibration, and a model-misspecification check flags recordings the twin cannot
 explain.
 
-On public recordings of developing rat cortical cultures (Wagenaar, Pine & Potter 2006) NeuroTwin
-[TBD: reproduces held-out statistics / recovers developmental trajectories of excitation, inhibition and
-synaptic recovery / forecasts network maturation]. A label-free imaging module supplies structural priors,
-closing the loop from images to function. It performs virtual staining of nuclei, dendrites, axons and dead
-cells from transmitted light, trained on the CC-BY Google in-silico-labeling rat cortical data. A twin of
-two-compartment oriented chips shows how channel asymmetry sets functional directionality, enabling in-silico
-chip design. Everything runs on a CPU; code, trained models and an interactive app are public.
+The reliability layer is not decoration: on 522 public recordings of developing rat cortical cultures
+(Wagenaar, Pine & Potter 2006; 3,049 five-minute windows) it rejected our own first attempt. A bank of
+81,664 simulated cultures covered young cultures but not mature bursting ones (75% of windows out of
+support), and the posterior said so through explicit out-of-support and leakage flags. That diagnosis drove
+a concrete fix — synapses with realistic decay kinetics and a prior concentrated where real cultures live —
+rather than a confidently wrong biological claim. [TBD: round-2 results, developmental trajectories,
+forecasting.]
+
+A label-free imaging module closes the loop from images to function: virtual staining of nuclei and dead
+cells from transmitted-light images of rat cortical cultures (CC-BY Google in-silico-labeling data),
+benchmarked against the published model's own predictions on the same test wells, with calibrated
+uncertainty on the readouts an experimenter uses. [TBD: results.] A twin of two-chamber oriented chips
+recovers which way axons were engineered to grow — the defining feature of axon-diode devices — from the
+onset lag between chambers, and maps how channel asymmetry becomes functional directionality. Everything
+runs on CPU; code, trained models and an interactive app are public.
 
 ## Technical report (outline)
 
