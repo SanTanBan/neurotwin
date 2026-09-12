@@ -61,6 +61,7 @@ def load_bank():
     meta = sorted(glob.glob(os.path.join(INPUT, "**", "bank2_shard*.json"), recursive=True))
     box = json.load(open(meta[0]))["focus_box"]
     apply_box({k: tuple(v) for k, v in box.items()})
+    json.dump(box, open(os.path.join(WORK, "focus_box.json"), "w"), indent=1)   # the demo needs it too
     theta = np.concatenate([np.load(f)["theta"] for f in files])
     x = np.concatenate([np.load(f)["x"] for f in files])
     ok = np.isfinite(x).all(1) & np.all((theta >= LO - 1e-9) & (theta <= HI + 1e-9), axis=1)

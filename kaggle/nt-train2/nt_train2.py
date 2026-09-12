@@ -577,6 +577,7 @@ def load_bank():
     meta = sorted(glob.glob(os.path.join(INPUT, "**", "bank2_shard*.json"), recursive=True))
     box = json.load(open(meta[0]))["focus_box"]
     apply_box({k: tuple(v) for k, v in box.items()})
+    json.dump(box, open(os.path.join(WORK, "focus_box.json"), "w"), indent=1)   # the demo needs it too
     theta = np.concatenate([np.load(f)["theta"] for f in files])
     x = np.concatenate([np.load(f)["x"] for f in files])
     ok = np.isfinite(x).all(1) & np.all((theta >= LO - 1e-9) & (theta <= HI + 1e-9), axis=1)
@@ -676,6 +677,10 @@ def main():
         df["file"] = df[["plating", "culture", "div"]].astype(str).agg("-".join, axis=1)
     xr = df[FEATURE_NAMES].to_numpy(np.float32)
     thr = np.quantile(out_of_support_scores(x[tr], x[te]), 0.99)
+    sub = rng.choice(len(tr), size=min(5000, len(tr)), replace=False)      # assets for the interactive app
+    np.savez(os.path.join(WORK, "twin_assets.npz"), mu=x[tr].mean(0), sd=x[tr].std(0), threshold=thr,
+             x=((x[tr][sub] - x[tr].mean(0)) / (x[tr].std(0) + 1e-9)).astype(np.float32),
+             feature_names=np.array(FEATURE_NAMES), param_names=np.array(PARAM_NAMES))
     df["oos_score"] = out_of_support_scores(x[tr], xr)
     df["out_of_support"] = df["oos_score"] > thr
     samples, df["leakage"] = sample_many(posterior, xr, n=500)
