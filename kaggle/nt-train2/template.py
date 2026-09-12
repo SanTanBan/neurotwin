@@ -160,6 +160,10 @@ def main():
         df["file"] = df[["plating", "culture", "div"]].astype(str).agg("-".join, axis=1)
     xr = df[FEATURE_NAMES].to_numpy(np.float32)
     thr = np.quantile(out_of_support_scores(x[tr], x[te]), 0.99)
+    sub = rng.choice(len(tr), size=min(5000, len(tr)), replace=False)      # assets for the interactive app
+    np.savez(os.path.join(WORK, "twin_assets.npz"), mu=x[tr].mean(0), sd=x[tr].std(0), threshold=thr,
+             x=((x[tr][sub] - x[tr].mean(0)) / (x[tr].std(0) + 1e-9)).astype(np.float32),
+             feature_names=np.array(FEATURE_NAMES), param_names=np.array(PARAM_NAMES))
     df["oos_score"] = out_of_support_scores(x[tr], xr)
     df["out_of_support"] = df["oos_score"] > thr
     samples, df["leakage"] = sample_many(posterior, xr, n=500)
