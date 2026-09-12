@@ -361,8 +361,39 @@ about a second, and the code and data are public.
 
 ## 7. Reproduction
 
-See `README.md`. Every result is produced by the Kaggle notebooks `nt-realdata`, `nt-simbank-s*`, `nt-train`,
-`nt-isldata` and `nt-vstain`, which are built from `kaggle/*/template.py` by `tools/build_kernel.py`.
+Every number in this report comes from a notebook in `kaggle/`, each of which is a single self-contained
+script built from a template by `tools/build_kernel.py` (it inlines the modules in `src/neurotwin/`, so a
+notebook has no private dependencies). All of them run on ordinary CPU sessions; none needs a GPU.
+
+| Step | Notebook | Input | Output | Runtime |
+|---|---|---|---|---|
+| 1 | `nt-realdata` | downloads 527 recordings from the Potter-lab archive | `wagenaar_dense_features.csv` (3,049 windows) | ~9 min |
+| 2 | `nt-simbank2/shards/s*` | none | round-2 bank `bank2_shard*.npz` (model v3, focused prior) | 11 h per shard |
+| 3 | `nt-train2` | steps 1–2 | `posterior.pt`, `calibration.json`, `real_posteriors.csv`, `ppc*.csv`, `twin_assets.npz`, figures | ~1–2 h |
+| 4 | `nt-demo` | steps 1, 3 | one worked example: fit, reliability verdict, in-silico experiment | ~5 min |
+| 5 | `nt-isldata` | downloads the in-silico-labeling rat cortical wells | 81 wells (73 train / 8 test) as compact arrays | ~4 min |
+| 6 | `nt-vstain` | step 5 | virtual-staining ensemble, test metrics against the published baseline, figures | ~1–2 h CPU |
+| 7 | `nt-simbank2c` | none | two-chamber bank with directional statistics | 11 h |
+| 8 | `nt-train2c` | step 7 | posterior over crossing probabilities, design map | ~1 h |
+
+Locally:
+
+```bash
+pip install -r requirements.txt
+python tools/build_kernel.py kaggle/nt-train2/template.py kaggle/nt-train2/nt_train2.py
+python tools/kgl.py run kaggle/nt-train2          # push to Kaggle, wait, fetch outputs
+python app/app.py                                  # interactive demo, reads the training outputs
+```
+
+**Determinism.** Every simulation batch draws its seeds from one generator seeded per notebook, and each
+virtual culture is simulated independently, so results are reproducible given the same seed and bank. The
+posterior is trained with a fixed torch seed; small numerical differences across BLAS versions can move the
+last digit of the metrics but not the conclusions.
+
+**Provenance note.** The first round-2 shard was pushed, through a naming mistake in our shard generator, as
+a new version of the round-1 notebook `nt-simbank-s0`; it runs the round-2 script and produces
+`bank2_shard0.npz`. The round-1 bank remains available as version 1 of that notebook. The public release
+uses correctly named notebooks.
 
 ## 8. Team
 
