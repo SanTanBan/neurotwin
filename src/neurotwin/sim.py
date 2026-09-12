@@ -2,7 +2,8 @@
 
 One simulation = one virtual culture: N leaky integrate-and-fire neurons (80% excitatory, 20% inhibitory)
 scattered over the chip, distance-dependent random connectivity, Tsodyks-Markram short-term synaptic
-depression (terminates network bursts), spike-frequency adaptation and a noisy background drive.
+depression (terminates network bursts), spike-frequency adaptation, exponentially decaying synaptic currents
+(which set how long a network burst lasts and its rise/decay shape) and a noisy background drive.
 Virtual electrodes pick up spikes of neurons within `pickup_um` of their centre, giving multi-unit spike
 trains in the same (time, electrode) format as real MEA recordings.
 
@@ -18,7 +19,7 @@ from numba import njit, prange
 
 # Parameters inferred by the digital twin: (low, high, scale). "log" = log-uniform prior.
 PRIOR_BOUNDS = {
-    "j_e": (0.5, 20.0, "log"),        # mV, EPSP of a fully recovered excitatory synapse
+    "j_e": (0.5, 20.0, "log"),        # mV, total EPSP of a fully recovered excitatory synapse
     "g_ie": (0.25, 4.0, "log"),       # inhibition/excitation ratio: IPSP = g_ie * j_e
     "u_std": (0.02, 0.8, "log"),      # release probability: fraction of synaptic resources used per spike
     "tau_rec": (0.2, 10.0, "log"),    # s, recovery time constant of synaptic resources
@@ -28,6 +29,7 @@ PRIOR_BOUNDS = {
     "mu_sd": (0.0, 4.0, "lin"),       # mV, neuron-to-neuron spread of the drive (intrinsic excitability)
     "sigma": (1.0, 6.0, "lin"),       # mV, stationary std of membrane noise
     "lambda_um": (100.0, 3000.0, "log"),  # um, connection length scale
+    "tau_syn": (0.5, 150.0, "log"),   # ms, synaptic current decay (sets burst length and shape)
 }
 PARAM_NAMES = list(PRIOR_BOUNDS)
 LOG = np.array([b[2] == "log" for b in PRIOR_BOUNDS.values()])
@@ -140,20 +142,23 @@ _CACHE = "__file__" in globals()   # numba's on-disk cache needs a source file (
 
 @njit(cache=_CACHE)
 def _run_one(n_steps, n_warm, dt, ptr, idx, w, is_x, xdel, elec_of, u, tau_rec, b_a, tau_a, mu_vec, sigma,
-             tau_m, v_rest, v_th, v_reset, ref_steps, seed, out_e, out_t):
+             tau_syn, tau_m, v_rest, v_th, v_reset, ref_steps, seed, out_e, out_t):
     np.random.seed(seed)
     N = elec_of.shape[0]
     decay_m = np.exp(-dt / tau_m)
     noise_step = sigma * np.sqrt(1.0 - decay_m * decay_m)
     decay_a = np.exp(-dt / (tau_a * 1000.0))
     rec_rate = 1.0 - np.exp(-dt / (tau_rec * 1000.0))
+    a_syn = np.exp(-dt / tau_syn)      # synaptic current decay; ~0 reproduces instantaneous synapses
+    amp = 1.0 - a_syn                  # keeps the total voltage delivered per spike equal to the weight
     v = v_rest + np.random.random(N) * (v_th - v_rest)
     a = np.zeros(N)
     x = np.ones(N)
+    s = np.zeros(N)                    # synaptic current state (mV delivered this step)
     ref = np.zeros(N, np.int64)
     inp = np.zeros(N)
     nxt = np.zeros(N)
-    ring = np.zeros((xdel + 1, N))      # delayed input from channel-crossing synapses
+    ring = np.zeros((xdel + 1, N))     # delayed input from channel-crossing synapses
     max_ev = out_e.shape[0]
     n_ev = 0
     for t in range(n_steps):
@@ -167,18 +172,19 @@ def _run_one(n_steps, n_warm, dt, ptr, idx, w, is_x, xdel, elec_of, u, tau_rec, 
                 inp[i] += ring[slot, i]
                 ring[slot, i] = 0.0
         for i in range(N):
+            s[i] = s[i] * a_syn + inp[i]
             if ref[i] > 0:
                 ref[i] -= 1
                 v[i] = v_reset
             else:
                 vinf = v_rest + mu_vec[i] - a[i]
-                v[i] = vinf + (v[i] - vinf) * decay_m + inp[i] + noise_step * np.random.standard_normal()
+                v[i] = vinf + (v[i] - vinf) * decay_m + s[i] + noise_step * np.random.standard_normal()
                 if v[i] >= v_th:
                     v[i] = v_reset
                     ref[i] = ref_steps
                     a[i] += b_a
-                    eff = u * x[i]
-                    x[i] -= eff
+                    eff = u * x[i] * amp
+                    x[i] -= u * x[i]
                     for k in range(ptr[i], ptr[i + 1]):
                         if is_x[k]:
                             ring[(t + xdel) % (xdel + 1), idx[k]] += w[k] * eff
@@ -200,7 +206,7 @@ def _run_batch(n_steps, n_warm, dt, ptrs, idx_all, w_all, isx_all, xdel, off, el
         lo, hi = off[b], off[b + 1]
         out_n[b] = _run_one(n_steps, n_warm, dt, ptrs[b], idx_all[lo:hi], w_all[lo:hi], isx_all[lo:hi], xdel,
                             elec_of[b], pars[b, 0], pars[b, 1], pars[b, 2], pars[b, 3], mu_vecs[b], pars[b, 4],
-                            fixed[0], fixed[1], fixed[2], fixed[3], np.int64(fixed[4]), seeds[b],
+                            pars[b, 5], fixed[0], fixed[1], fixed[2], fixed[3], np.int64(fixed[4]), seeds[b],
                             out_e[b], out_t[b])
 
 
@@ -223,7 +229,7 @@ def simulate(theta, cfg=ChipConfig(), duration_s=120.0, warmup_s=5.0, seed=0, ma
     xdel = max(1, int(round(cfg.cross_delay_ms / cfg.dt_ms))) if cfg.compartments == 2 else 0
     elec_of = np.stack([n[3] for n in nets])
     mu_vecs = np.stack([n[4] for n in nets])
-    ix = [PARAM_NAMES.index(k) for k in ("u_std", "tau_rec", "b_adapt", "tau_adapt", "sigma")]
+    ix = [PARAM_NAMES.index(k) for k in ("u_std", "tau_rec", "b_adapt", "tau_adapt", "sigma", "tau_syn")]
     pars = np.ascontiguousarray(theta[:, ix])
     fixed = np.array([cfg.tau_m_ms, cfg.v_rest, cfg.v_thresh, cfg.v_reset, round(cfg.t_ref_ms / cfg.dt_ms)])
     n_elec = len(cfg.electrodes())

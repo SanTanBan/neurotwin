@@ -212,6 +212,51 @@ versus channel asymmetry.]
 
 ## 4. Experiments and results
 
+### 4.1 Round 1: does the simulator cover real recordings?
+
+A first bank of **81,664 virtual cultures** of 300 s each was generated from the broad prior of §3.1 on four
+Kaggle CPU sessions (about 44 CPU-hours; 19.2k / 20.9k / 22.0k / 19.6k per shard). Before fitting anything,
+we asked whether real recordings lie inside the region the simulator can produce. Features were z-scored
+using the bank, and each real window's distance to its 10 nearest simulations was compared with the same
+quantity for 5,000 held-out simulations.
+
+| Quantity | Value |
+|---|---|
+| 10-NN distance, held-out simulations (median) | 0.05 |
+| 99th percentile (support threshold) | 0.87 |
+| 10-NN distance, real windows (median) | 1.62 |
+| **Real windows outside the simulated support** | **76.4%** |
+| Simulations that burst synchronously | 12.9% |
+| Distinct simulations acting as nearest neighbour to a real window | 451 of 81,664 |
+
+The mismatch is developmental: 0% of windows are outside the support at DIV 3–4, 60% at DIV 7, and 90–100%
+from DIV 15 on. In other words the broad prior covers young, sparsely active cultures well and mature,
+strongly bursting cultures poorly. Even the closest simulations to mature windows differ systematically:
+
+| Feature | Real (DIV ≥ 15, median) | Closest simulation (median) |
+|---|---|---|
+| Network-burst duration | 2.1 s | 0.37 s |
+| Burst rise fraction (peak position within the burst) | 0.23 | 0.48 |
+| Population Fano factor (log10) | 2.86 | 2.07 |
+| Single-electrode burst duration | 0.30 s | 0.16 s |
+
+Two conclusions follow, and both shaped the next round:
+
+1. **A model gap.** Instantaneous synapses cannot sustain a two-second burst with a fast rise and a slow
+   tail. Model v3 therefore gives synapses an exponentially decaying current with a fitted time constant
+   `tau_syn` (0.5–150 ms); as `tau_syn` goes to zero the model reproduces v2 bit-for-bit, which is checked
+   by a regression test.
+2. **A sampling gap.** Bursting cultures occupy a small part of the broad prior, so the bank is sparse
+   exactly where the real data live. Round 2 concentrates simulations there, following the truncated
+   sequential approach of Deistler et al. (2022).
+
+Parameters of the simulations closest to mature recordings indicate where that region lies: strong
+excitatory synapses (j_e ≈ 14 mV, 10–90% range 4.5–19), low release probability (u ≈ 0.14), recovery
+τ_rec ≈ 1.1 s, weak adaptation (b ≈ 0.2 mV), drive µ ≈ 5.3 mV with a large spread (µ_sd ≈ 2.8 mV) and a
+connection length scale of a few hundred µm.
+
+### 4.2 Round 1: amortised inference
+
 [TBD]
 
 ## 5. Reliability analysis and limitations
