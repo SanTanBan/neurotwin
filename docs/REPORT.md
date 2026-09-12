@@ -260,9 +260,45 @@ excitatory synapses (j_e ≈ 14 mV, 10–90% range 4.5–19), low release probab
 τ_rec ≈ 1.1 s, weak adaptation (b ≈ 0.2 mV), drive µ ≈ 5.3 mV with a large spread (µ_sd ≈ 2.8 mV) and a
 connection length scale of a few hundred µm.
 
-### 4.2 Round 1: amortised inference
+### 4.2 Round 1: amortised inference and its self-diagnosis
 
-[TBD]
+A neural spline flow was trained on the round-1 bank (80,664 simulations for training, 1,000 held out;
+57 min on a Kaggle CPU session).
+
+**On simulated data the posterior is well calibrated.** Credible intervals hold their nominal coverage, and
+the joint (TARP) coverage is essentially exact:
+
+| | j_e | g_ie | u | τ_rec | b | τ_a | µ | µ_sd | σ | λ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| R² (posterior mean vs truth) | 0.43 | 0.06 | 0.19 | 0.04 | 0.50 | 0.49 | 0.42 | 0.20 | 0.66 | 0.05 |
+| 50% interval coverage | 0.46 | 0.51 | 0.45 | 0.45 | 0.51 | 0.50 | 0.52 | 0.54 | 0.55 | 0.49 |
+| 90% interval coverage | 0.91 | 0.90 | 0.89 | 0.88 | 0.90 | 0.89 | 0.90 | 0.90 | 0.92 | 0.91 |
+| SBC rank-uniformity p | 0.03 | 0.05 | 0.39 | 0.16 | 0.75 | 0.75 | 0.52 | 0.60 | 0.23 | 0.88 |
+
+TARP expected-coverage deviation: −0.004 (0 is perfect), KS p = 1.00.
+
+Calibration is therefore sound, but **identifiability is uneven**: membrane noise, adaptation, drive and
+excitatory efficacy are constrained by the 16 statistics, whereas the inhibition ratio, synaptic recovery
+time and wiring range are barely constrained under the broad prior. This is expected: most draws from that
+prior produce silent or asynchronous cultures whose statistics say little about synaptic dynamics.
+
+**On real data the twin declares itself invalid**, which is the intended behaviour of the reliability layer:
+
+| Diagnostic | Round 1 |
+|---|---|
+| Real windows outside the simulated support | 75.4% |
+| Mean posterior mass falling outside the prior box ("leakage") | 0.84 |
+| Statistics inside the 90% posterior-predictive interval (12 recordings) | 0.73 |
+| Median \|z\| of observed statistics under the fitted twin | 1.58 |
+
+Round-1 fits to real recordings are therefore extrapolation rather than inference, and no biological
+conclusion is drawn from them. This is what motivates model v3 and the focused round-2 prior of §4.1.
+
+**A flawed baseline, and its replacement.** Round 1 compared the fitted twin against an "uninformed" prior
+predictive drawn from the whole prior. That baseline covered 96% of statistics simply because it is
+enormously wide, so the comparison flattered the baseline and means little. From round 2 on, the baseline is
+a *mismatched* twin: parameters drawn from the posterior of a **different** recording. A twin is only useful
+if it predicts its own recording better than another recording's twin does.
 
 ## 5. Reliability analysis and limitations
 

@@ -26,12 +26,15 @@ TIME_BUDGET_S = 11.0 * 3600
 MAX_SIMS = 100_000
 OUT = f"/kaggle/working/bank2_shard{SHARD}.npz" if os.path.isdir("/kaggle/working") else f"bank2_shard{SHARD}.npz"
 
-# Focused prior: 10-90% range of the simulations closest to real mature windows, widened for safety.
+# Focused prior: the 10-90% range of the simulations closest to real mature windows, widened for safety.
+# j_e reaches beyond the round-1 prior because longer synaptic currents spread the same charge over more
+# time, so igniting a burst then needs a larger per-spike weight; tau_rec is extended upward because round-1
+# matches burst far too often (8-15/min against 1.6/min in real cultures).
 FOCUS_BOX = {
-    "j_e": (4.0, 20.0, "log"), "g_ie": (0.3, 2.5, "log"), "u_std": (0.04, 0.5, "log"),
-    "tau_rec": (0.2, 6.0, "log"), "b_adapt": (0.0, 1.2, "lin"), "tau_adapt": (0.7, 25.0, "log"),
-    "mu": (1.0, 11.0, "lin"), "mu_sd": (0.5, 4.0, "lin"), "sigma": (1.5, 5.5, "lin"),
-    "lambda_um": (120.0, 2000.0, "log"), "tau_syn": (2.0, 150.0, "log"),
+    "j_e": (6.0, 30.0, "log"), "g_ie": (0.3, 2.5, "log"), "u_std": (0.04, 0.5, "log"),
+    "tau_rec": (0.5, 10.0, "log"), "b_adapt": (0.0, 1.5, "lin"), "tau_adapt": (0.7, 25.0, "log"),
+    "mu": (2.0, 10.0, "lin"), "mu_sd": (0.5, 4.0, "lin"), "sigma": (1.5, 5.5, "lin"),
+    "lambda_um": (120.0, 2000.0, "log"), "tau_syn": (1.0, 100.0, "log"),
 }
 
 # ---- begin src/neurotwin/sim.py ----

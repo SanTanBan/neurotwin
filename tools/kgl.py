@@ -41,8 +41,12 @@ def fetch(slug, out, pattern=None):
     log = os.path.join(out, slug.split("/")[1] + ".log")
     if not os.path.exists(log):
         return "(no log found)"
-    entries = json.load(open(log, encoding="utf-8"))
-    text = "".join(e.get("data", "") for e in entries if "SyntaxWarning" not in e.get("data", ""))
+    raw = open(log, encoding="utf-8", errors="replace").read()
+    try:                                        # Kaggle logs are JSON, but a partial fetch is plain text
+        entries = json.loads(raw)
+        text = "".join(e.get("data", "") for e in entries if "SyntaxWarning" not in e.get("data", ""))
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        text = raw
     open(os.path.join(out, "log.txt"), "w", encoding="utf-8").write(text)
     return text
 

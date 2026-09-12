@@ -12,7 +12,9 @@ from pathlib import Path
 OWNER = "santanubanerjee9"
 
 
-def make_shards(script, out_root, n, name="nt-simbank"):
+def make_shards(script, out_root, n, name=None):
+    # default: the kernel family is the folder holding the shards, e.g. kaggle/nt-simbank2/shards -> nt-simbank2
+    name = name or Path(out_root).resolve().parent.name
     src = Path(script).read_text(encoding="utf-8")
     code_file = Path(script).name
     folders = []
