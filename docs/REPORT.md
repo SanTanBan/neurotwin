@@ -71,6 +71,10 @@ The terms are:
 - **Short-term synaptic depression** (Tsodyks–Markram). Each presynaptic neuron has a resource x_j. A spike
   uses a fraction u of it, and it recovers with time constant τ_rec. This mechanism terminates network bursts.
 - **Spike-frequency adaptation.** Each spike raises a_i by b, which then decays with time constant τ_a.
+- **Synaptic kinetics.** Each spike delivers its weight through a current that decays with time constant
+  τ_syn, normalised so the total voltage delivered per spike equals the weight. This sets how long a network
+  burst lasts and its rise/decay shape. As τ_syn goes to zero the model reduces exactly to instantaneous
+  synapses (model v2), which a regression test checks bit-for-bit.
 
 Each electrode records the spikes of every neuron within 80 µm of its centre, which is about three neurons on
 average, as in multi-unit recordings. The inner loop is event-driven: only the synapses of neurons that spiked
@@ -91,6 +95,7 @@ The ten inferred parameters and their priors (uniform, or log-uniform where mark
 | μ_sd | drive heterogeneity (mV) | 0–4 |
 | σ | membrane noise (mV) | 1–6 |
 | λ | connection length scale (µm) | 100–3000, log |
+| τ_syn | synaptic current decay (ms) | 0.5–150, log (added in model v3) |
 
 The priors were set by prior-predictive checks against the real recordings. A first version could not
 produce the long, rare network bursts on top of tonic firing seen in real cultures. The fix was to add
