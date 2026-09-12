@@ -302,11 +302,62 @@ if it predicts its own recording better than another recording's twin does.
 
 ## 5. Reliability analysis and limitations
 
-[TBD]
+**What the reliability layer checks.** Three independent signals, each of which can veto a fit:
+
+1. *Calibration on simulations* (SBC ranks, interval coverage, TARP) shows whether the stated uncertainty is
+   honest when the model is correct.
+2. *Out-of-support score* shows whether a real recording resembles anything the simulator can produce.
+3. *Posterior leakage* shows whether the flow is pushing mass outside the parameter ranges, the signature of
+   a recording the model cannot explain.
+
+Round 1 passed the first check and failed the other two, and we report that rather than the biological
+narrative the round-1 trajectories would have suggested. This is the intended behaviour: a twin that cannot
+say "I do not know" is worse than no twin.
+
+**Limitations, stated plainly.**
+
+- *The model is phenomenological.* Four hundred leaky integrate-and-fire neurons stand in for tens of
+  thousands of real ones, so the inferred parameters are effective quantities of that reduced model, not
+  measured cellular constants. They are comparable across recordings analysed the same way; they are not
+  calibrated biophysics.
+- *Not every parameter is identifiable.* Under the round-1 prior the inhibition ratio, synaptic recovery time
+  and wiring range were barely constrained by the 16 statistics (R² ≤ 0.06). Identifiability is reported per
+  parameter, and unidentified parameters must not be read as findings.
+- *The summary statistics are a choice.* They were fixed before fitting and applied identically to real and
+  simulated data, but a different set would give different identifiability.
+- *One twin per window.* Each 300-s window is fitted independently; the twin has no memory of the culture's
+  earlier days. Trajectories are therefore a sequence of independent fits, not a dynamical model of
+  development.
+- *Structure and function are validated separately.* The imaging module and the electrophysiological twin use
+  different public datasets (the same cell type, not the same cultures), so the structure-to-function link is
+  a designed interface, not yet a jointly validated inference.
+- *The oriented-chip twin is validated on simulated ground truth only.* No public recordings from
+  compartmentalised axon-diode chips were found, so the directional results show what the method recovers
+  when the answer is known, not a measurement of a real device.
+- *Recording length matters.* Five-minute windows contain few network bursts in slow-bursting cultures, which
+  widens the posterior; this is visible in the reported uncertainty rather than hidden.
 
 ## 6. Potential impact
 
-[TBD]
+Neural organ-on-a-chip platforms are becoming a routine part of preclinical work: the FDA Modernization Act
+2.0 (December 2022) removed the animal-testing requirement, and the FDA's April 2025 roadmap explicitly
+promotes organ-chips and computational models as New Approach Methodologies. The economics are stark, with
+roughly US$2.6 billion of capitalised R&D per approved drug (DiMasi et al., 2016) and most clinical
+candidates failing (Wong et al., 2019). Chips only help if their readouts support decisions.
+
+NeuroTwin adds three things to a neural-chip workflow, each of which is a concrete saving rather than a
+claim of novelty for its own sake:
+
+1. **Mechanism instead of description.** Two cultures with the same burst rate can differ in excitation,
+   inhibition, synaptic recovery or excitability spread. The twin separates these, with an interval on each.
+2. **In-silico experiments.** A fitted twin can be run under changes that were never performed, so an
+   experiment can be prioritised rather than guessed. Predictions are falsifiable on the same chip.
+3. **A safety net.** Every fit carries machine-checkable reliability flags, so a twin that does not apply
+   says so instead of producing a confident number. For a company building "data assets" out of chip
+   recordings, that distinction is what makes the asset trustworthy.
+
+The cost of entry is low: everything here runs on ordinary CPUs, the inference for a new recording takes
+about a second, and the code and data are public.
 
 ## 7. Reproduction
 
