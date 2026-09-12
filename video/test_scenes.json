@@ -1,0 +1,8 @@
+{
+  "voice": "Microsoft Zira Desktop",
+  "rate": 0,
+  "scenes": [
+    {"image": "runs/figs/day1_overview.png", "text": "A real neural chip culture bursts in synchrony, and our simulated culture does the same on the same sixty electrode layout."},
+    {"image": "runs/nt-train/figures/recovery.png", "text": "On held out simulations the fitted twin recovers the parameters it can identify, and reports honest uncertainty for the rest."}
+  ]
+}
