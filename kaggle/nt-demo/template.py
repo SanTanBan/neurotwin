@@ -74,14 +74,15 @@ def main():
     print(pd.DataFrame({"statistic": FEATURE_NAMES, "value": np.round(x, 3)}).to_string(index=False))
 
     t1 = time.time()
-    samples, leak = sample_many(posterior, x[None], n=N_POST)
+    keep = assets["keep"] if "keep" in assets.files else np.arange(len(x))   # statistics used for inference
+    samples, leak = sample_many(posterior, x[keep][None], n=N_POST)
     s = samples[:, 0]
     print(f"\ntwin fitted in {time.time() - t1:.2f} s")
     q = np.percentile(s, [5, 50, 95], axis=0)
     print(pd.DataFrame({"parameter": PARAM_NAMES, "median": np.round(q[1], 3),
                         "90% interval": [f"{a:.3g} - {b:.3g}" for a, b in zip(q[0], q[2])]}).to_string(index=False))
 
-    z = (x - assets["mu"]) / (assets["sd"] + 1e-9)
+    z = (x[keep] - assets["mu"]) / (assets["sd"] + 1e-9)
     d = np.sort(np.linalg.norm(assets["x"] - z, axis=1))[:10].mean()
     trusted = d <= float(assets["threshold"]) and leak[0] < 0.2
     print(f"\nreliability: distance to simulated data {d:.2f} (threshold {float(assets['threshold']):.2f}), "

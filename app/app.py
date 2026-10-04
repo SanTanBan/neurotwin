@@ -76,6 +76,11 @@ def analyse(file, start_s):
     return raster_fig(ch, t, start, min(start + 60, t.max()), "recording (first 60 s of the window)"), tbl, msg
 
 
+def _keep(x):
+    """Statistics the posterior was trained on (a training run may exclude misspecified ones)."""
+    return x[BANK["keep"]] if BANK is not None and "keep" in BANK.files else x
+
+
 def fit_twin(file, start_s):
     if POSTERIOR is None:
         return None, None, "No trained posterior found: set NEUROTWIN_ASSETS to the training output folder."
@@ -83,7 +88,7 @@ def fit_twin(file, start_s):
     start = float(start_s)
     m = (t >= start) & (t < start + WIN_S)
     x = compute_features(ch[m], t[m] - start, WIN_S)
-    samples, leak = sample_many(POSTERIOR, x[None], n=500)
+    samples, leak = sample_many(POSTERIOR, _keep(x)[None], n=500)
     s = samples[:, 0]
     rows = []
     for i, p in enumerate(PARAM_NAMES):
@@ -91,7 +96,7 @@ def fit_twin(file, start_s):
         rows.append({"parameter": p, "median": round(q[1], 3), "90% interval": f"{q[0]:.3g} – {q[2]:.3g}"})
     warn = ""
     if BANK is not None:
-        z = (x - BANK["mu"]) / (BANK["sd"] + 1e-9)
+        z = (_keep(x) - BANK["mu"]) / (BANK["sd"] + 1e-9)
         d = np.linalg.norm(BANK["x"] - z, axis=1)
         oos = np.mean(np.sort(d)[:10]) > float(BANK["threshold"])
         warn = ("\n\n**Reliability: this recording is unlike anything the simulator produces, so the fit is "
@@ -116,7 +121,7 @@ def in_silico(file, start_s, inhibition, drive, synaptic_decay, seed):
     start = float(start_s)
     m = (t >= start) & (t < start + WIN_S)
     x = compute_features(ch[m], t[m] - start, WIN_S)
-    samples, _ = sample_many(POSTERIOR, x[None], n=200)
+    samples, _ = sample_many(POSTERIOR, _keep(x)[None], n=200)
     theta = np.median(samples[:, 0], axis=0)
     mod = theta.copy()
     for name, factor in (("g_ie", inhibition), ("mu", drive), ("tau_syn", synaptic_decay)):
