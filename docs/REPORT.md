@@ -613,7 +613,9 @@ last digit of the metrics but not the conclusions.
 **Provenance note.** The first round-2 shard was pushed, through a naming mistake in our shard generator, as
 a new version of the round-1 notebook `nt-simbank-s0`; it runs the round-2 script and produces
 `bank2_shard0.npz`. The round-1 bank remains available as version 1 of that notebook. The public release
-uses correctly named notebooks.
+uses correctly named notebooks. Each built script in `kaggle/<notebook>/` is the exact file that ran on Kaggle; rebuilding
+a template with the current `src/` gives the latest model version, which reproduces the earlier versions
+exactly at their neutral settings (§3.1).
 
 ## 8. Team
 

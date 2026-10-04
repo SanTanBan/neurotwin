@@ -42,8 +42,9 @@ BASE_BOX = {
 
 
 def sample_base(n, rng):
+    """The ten model-v2 parameters; simulate() runs later mechanisms at their neutral (v2-exact) setting."""
     cols = []
-    for name in PARAM_NAMES:
+    for name in BASE_BOX:
         lo, hi, scale = BASE_BOX[name]
         u = rng.random(n)
         cols.append(np.exp(np.log(lo) + u * (np.log(hi) - np.log(lo))) if scale == "log" else lo + u * (hi - lo))
@@ -67,7 +68,7 @@ def main():
         times.append(time.time() - tb)
         np.savez_compressed(OUT, theta=np.concatenate(thetas), cross=np.concatenate(crosses),
                             x_global=np.concatenate(xg), x_dir=np.concatenate(xd),
-                            param_names=np.array(PARAM_NAMES), feature_names=np.array(FEATURE_NAMES),
+                            param_names=np.array(list(BASE_BOX)), feature_names=np.array(FEATURE_NAMES),
                             dir_feature_names=np.array(DIR_FEATURE_NAMES))
         print(f"[2c shard {SHARD}] {len(thetas) * BATCH} sims, last batch {times[-1]:.0f}s, "
               f"elapsed {(time.time() - t0) / 60:.1f} min", flush=True)
