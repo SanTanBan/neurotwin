@@ -1,6 +1,6 @@
 # NeuroTwin: calibrated digital twins of neural organ-on-a-chip cultures — technical report (draft)
 
-> Draft v0.1 (2026-09-11). Results sections are filled only with measured numbers; `[TBD]` marks pending work.
+> Draft v0.3 (2026-10-04). Results sections are filled only with measured numbers; `[TBD]` marks pending work.
 > References marked `[verify]` still need a final check before submission.
 
 ## 1. Problem definition and application scenario
@@ -33,8 +33,14 @@ move the field "from experimental description toward predictive simulation".
 
 **Scenario.** A lab records spontaneous MEA activity from neural chips every day, as in routine culture
 quality control or developmental studies. NeuroTwin turns each recording into a posterior distribution over
-ten interpretable parameters within seconds on a CPU. It flags recordings the model cannot explain, tracks
-parameter trajectories over days, and lets the user run the fitted twin forward for in-silico experiments.
+the model's interpretable parameters (11 in model v3, 13 in model v4) in under a second on a CPU. It flags
+recordings the model cannot explain, tracks parameter trajectories over days, and lets the user run the
+fitted twin forward for in-silico experiments whose answers carry their own uncertainty (Figure 1).
+
+![Figure 1](figures/architecture.png)
+*Figure 1. NeuroTwin end to end. A simulator of the chip generates a bank of virtual cultures; an amortised
+posterior learned from that bank maps a recording's 16-statistic signature to its mechanistic parameters,
+together with reliability flags, and the fitted twin can be run forward under changed conditions.*
 
 ## 2. Data, licenses and compliance
 
@@ -234,6 +240,10 @@ quantity for 5,000 held-out simulations.
 | Simulations that burst synchronously | 12.9% |
 | Distinct simulations acting as nearest neighbour to a real window | 451 of 81,664 |
 
+![Figure 2](figures/round1_coverage.png)
+*Figure 2. Round 1: marginal distributions of the 16 statistics in the simulation bank (blue) and in the
+3,049 real windows (orange). Values of −3 are the floor of log-scaled statistics (no events).*
+
 The mismatch is developmental: 0% of windows are outside the support at DIV 3–4, 60% at DIV 7, and 90–100%
 from DIV 15 on. In other words the broad prior covers young, sparsely active cultures well and mature,
 strongly bursting cultures poorly. Even the closest simulations to mature windows differ systematically:
@@ -312,10 +322,18 @@ synchronously, against 12.9% in round 1.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | R² | 0.32 | 0.05 | 0.38 | 0.08 | 0.39 | 0.44 | 0.23 | 0.22 | 0.54 | 0.02 | 0.29 |
 | 90% coverage | 0.91 | 0.89 | 0.91 | 0.88 | 0.89 | 0.92 | 0.89 | 0.91 | 0.90 | 0.92 | 0.92 |
-| SBC rank p | 0.99 | 0.46 | 0.23 | 0.39 | 0.08 | 0.33 | 0.52 | 0.82 | 0.16 | 0.97 | 0.52 |
+| SBC rank p | 0.99 | 0.45 | 0.23 | 0.39 | 0.08 | 0.33 | 0.52 | 0.82 | 0.16 | 0.96 | 0.52 |
 
 TARP expected-coverage deviation −0.009. As in round 1, the inhibition ratio, synaptic recovery time and
 wiring range are not identified by the 16 statistics and are reported only with their (wide) posteriors.
+
+![Figure 3](figures/round2_recovery.png)
+*Figure 3. Round 2: posterior mean against the true value for 500 held-out simulations (log-uniform
+parameters on a log axis). The flat clouds are the three unidentified parameters.*
+
+![Figure 4](figures/round2_sbc.png)
+*Figure 4. Round 2: simulation-based calibration ranks. Flat histograms mean the posterior's uncertainty is
+honest; the p-values are Kolmogorov–Smirnov tests of uniformity.*
 
 **On real data the twin is now useful where it says it is, and only there.**
 
@@ -327,6 +345,11 @@ wiring range are not identified by the 16 statistics and are reported only with 
 
 The reliable windows span the whole of development: 26 of 355 windows at DIV ≤ 6, 79 / 444 at DIV 7–10,
 82 / 511 at DIV 11–14, 61 / 717 at DIV 15–21, 69 / 598 at DIV 22–28 and 24 / 424 at DIV 29–40.
+
+![Figure 5](figures/reliability_real.png)
+*Figure 5. Round 2 on real data. Left: posterior mass outside the prior box for each of the 3,049 windows.
+Right: distance to the nearest simulations against age; windows above the dashed support threshold are
+flagged as extrapolation.*
 
 **The fitted twin is specific to its recording.** For 16 reliable recordings spanning development, 24
 posterior draws were re-simulated and their statistics compared with the recording. The baseline is a
@@ -342,6 +365,78 @@ Per statistic, the own twin's 90% interval contains the observation for at least
 the 16 statistics. The exceptions are single-electrode burst duration (19%), the fraction of spikes inside
 bursts (50%) and network-burst duration (81%). These are the burst-morphology statistics that motivated
 model v4.
+
+![Figure 6](figures/ppc_own_vs_mismatched.png)
+*Figure 6. Posterior predictive checks on 16 reliable recordings from DIV 3 to 34. Left: median |z| of the 16
+statistics under each recording's own twin (red) and under the twin of a different recording (grey). Right:
+share of statistics inside the 90% predictive interval.*
+
+**What the twins say about maturation.** Keeping only windows that pass every reliability check leaves 134
+culture-days from 29 cultures (Figure 7). Twenty cultures have reliable windows on at least three different
+days, so each can act as its own control. For every culture and parameter we take the sign of the
+correlation between age and the posterior median, and test the twenty signs against a fair coin (two-sided
+binomial test).
+
+| Posterior median | DIV ≤ 8 | 9–14 | 15–21 | 22–28 | 29–40 | Cultures rising with age | Sign-test p |
+|---|---|---|---|---|---|---|---|
+| Background drive µ (mV) | 4.69 | 4.84 | 5.13 | 5.41 | 6.45 | 16 / 20 | 0.012 |
+| Excitability spread µ_sd (mV) | 2.00 | 2.64 | 2.76 | 2.85 | 2.84 | 16 / 20 | 0.012 |
+| Adaptation increment b (mV) | 0.58 | 0.40 | 0.32 | 0.20 | 0.40 | 3 / 20 | 0.003 |
+| Adaptation time constant τ_a (s) | 13.2 | 7.8 | 7.3 | 5.7 | 3.3 | 4 / 20 | 0.012 |
+| Excitatory efficacy j_e (mV) | 11.2 | 12.0 | 13.9 | 15.4 | 13.7 | 14 / 20 | 0.115 |
+| Synaptic decay τ_syn (ms) | 23.4 | 28.1 | 30.0 | 32.7 | 31.7 | 11 / 20 | 0.82 |
+| *Culture-days* | *24* | *53* | *28* | *23* | *6* | | |
+
+Four of the six trends survive a Benjamini–Hochberg correction at a 5% false-discovery rate (drive,
+excitability spread and both adaptation parameters); the stricter Holm correction keeps only the adaptation
+increment. Within the model, maturing cultures are explained by stronger and more heterogeneous background
+drive and by weaker, faster spike-frequency adaptation, with a weaker tendency towards stronger excitatory
+synapses. Two caveats apply. The parameters are effective quantities of a reduced model (§5), so these are
+testable hypotheses about mechanism — for example, by measuring afterhyperpolarisation currents at two ages —
+rather than measurements. And the share of windows that pass the reliability checks varies with age (6–18%),
+so the trends describe the part of each culture's repertoire that the model reproduces.
+
+![Figure 7](figures/maturation.png)
+*Figure 7. Posterior medians of reliable windows against age. Grey: individual cultures; red: median and
+interquartile range per age bin.*
+
+**A worked example and an in-silico experiment.** The `nt-demo` notebook fits the twin of culture 2-2 at DIV
+20 from the first 300 s of its recording (Figure 8). The amortised posterior returns 500 draws in under 0.2 s
+on a laptop CPU, and the recording passes both checks: its distance to the nearest simulations is 0.52
+against a threshold of 0.90, and 9% of the posterior mass falls outside the parameter box. Re-simulating 16
+posterior draws, each on its own random network, places 13 of the 16 observed statistics inside the draws'
+90% range. The three misses are single-electrode burst duration, network-burst duration and the regularity
+of network bursts, the burst-morphology statistics that model v4 addresses.
+
+The twin was then asked a question the recording cannot answer: what would this culture do with half the
+inhibition? Each modified run is paired with an unmodified run on the same network with the same noise, so
+a pair differs only by the intervention. Two sources of spread are kept apart: network randomness (the
+posterior-median twin on 8 random networks) and parameter uncertainty (16 posterior draws).
+
+| Halving the inhibition ratio | Synchrony, fitted → halved (medians) | Change in synchrony | Change in log10 population Fano factor |
+|---|---|---|---|
+| Posterior-median twin, 8 networks | 0.04 → 0.65 | +0.36 to +0.65; above +0.1 on 8 of 8 networks | +0.85 to +1.82 |
+| 16 posterior draws | 0.06 → 0.44 | median +0.02, 90% range 0.00 to +0.66; above +0.1 in 6 of 16 | median +0.16, 90% range +0.02 to +1.46 |
+
+For the median twin the answer is unambiguous: on every network, halving inhibition turns asynchronous firing
+into intermittent network-wide bursts (Figure 8, third panel). Across the posterior, the direction holds —
+synchrony never falls — but the size does not: the change is below 0.01 in 7 draws and above 0.1 in 6. This
+spread comes from what the recording leaves undetermined, above all the inhibition ratio itself (R² 0.05 on
+simulations), rather than from network randomness. The calibrated answer is therefore "more synchronous,
+possibly much more", and the twin points to the measurement that would sharpen it: an independent handle on
+inhibition, such as a single pharmacological titration. A point-estimate twin would have returned one of
+these answers with false confidence. An earlier version of this experiment compared runs on different random
+networks, which conflates the intervention with network randomness; pairing the runs removed that confound.
+
+The same experiment exposes a limit of amortisation. Seven of the 16 draws are already synchronous before the
+intervention (synchrony 0.22–0.95, against 0.03 in the recording), so for this recording the posterior is
+broader than the data warrant (§5).
+
+![Figure 8](figures/demo_in_silico.png)
+*Figure 8. Worked example (culture 2-2, DIV 20). From left: the recording; its posterior-median twin; the
+same twin, on the same network with the same noise, with inhibition halved; and the intervention's effect on
+synchrony and on the population Fano factor across 16 posterior draws (left pair) and across 8 random
+networks for the median twin (right pair). Dashed lines: the recording.*
 
 ### 4.4 Round 3: model v4
 
@@ -368,6 +463,11 @@ TARP deviation −0.013. The posterior is honest about the wiring, but a five-mi
 about it. The sign of the engineered asymmetry (p_fwd − p_bwd) is recovered in **61.9%** of held-out chips
 overall, and in 63.6–64.1% when the asymmetry exceeds 0.3. The asymmetry estimate explains 17% of the
 variance, and the 90% interval for p_fwd is typically 0.8 wide.
+
+![Figure 9](figures/two_chamber.png)
+*Figure 9. Two-chamber chips (simulated ground truth). Left: inferred against engineered asymmetry for 800
+held-out chips. Middle: inferred asymmetry over the design space of crossing probabilities. Right: width of
+the 90% interval for p_fwd against the strength of the stronger direction.*
 
 This result is weak, and we say so. It is consistent with the earlier ground-truth test, in which the
 onset lag recovered the direction cleanly for strong diodes (+34 ± 24 ms versus −40 ± 35 ms) but was noisy in
@@ -401,13 +501,15 @@ dropped, and counts and dead fraction calibrated separately. [TBD: corrected res
 
 ## 5. Reliability analysis and limitations
 
-**What the reliability layer checks.** Three independent signals, each of which can veto a fit:
+**What the reliability layer checks.** Four independent signals, each of which can veto a fit:
 
 1. *Calibration on simulations* (SBC ranks, interval coverage, TARP) shows whether the stated uncertainty is
    honest when the model is correct.
 2. *Out-of-support score* shows whether a real recording resembles anything the simulator can produce.
 3. *Posterior leakage* shows whether the flow is pushing mass outside the parameter ranges, the signature of
    a recording the model cannot explain.
+4. *Posterior predictive checks* show whether re-simulated twins reproduce their own recording, and do so
+   better than the twin of a different recording.
 
 Round 1 passed the first check and failed the other two, and we report that rather than the biological
 narrative the round-1 trajectories would have suggested. This is the intended behaviour: a twin that cannot
@@ -435,6 +537,14 @@ say "I do not know" is worse than no twin.
   when the answer is known, not a measurement of a real device.
 - *Recording length matters.* Five-minute windows contain few network bursts in slow-bursting cultures, which
   widens the posterior; this is visible in the reported uncertainty rather than hidden.
+- *Amortised posteriors are calibrated on average, not for each recording.* Coverage, SBC and TARP average
+  over simulated data. For a single recording the posterior can be broader than the data warrant: in the
+  worked example, 7 of 16 posterior draws burst synchronously although the recording does not. A short
+  per-recording refinement — a truncated sequential round started from the amortised posterior (Deistler et
+  al., 2022) — would sharpen such twins at a cost of minutes rather than milliseconds.
+- *In-silico predictions inherit the posterior's uncertainty.* An intervention on a weakly identified
+  parameter (here the inhibition ratio) gives a robust direction but an uncertain size. The twin reports both,
+  and the spread across posterior draws is the quantity a follow-up experiment should reduce.
 
 ## 6. Potential impact
 
@@ -462,7 +572,8 @@ about a second, and the code and data are public.
 
 Every number in this report comes from a notebook in `kaggle/`, each of which is a single self-contained
 script built from a template by `tools/build_kernel.py` (it inlines the modules in `src/neurotwin/`, so a
-notebook has no private dependencies). All of them run on ordinary CPU sessions; none needs a GPU.
+notebook has no private dependencies). All of them run on ordinary CPU sessions; only the imaging notebook
+`nt-vstain2` uses a GPU, and its CPU predecessor `nt-vstain` shows the same pipeline without one.
 
 | Step | Notebook | Input | Output | Runtime |
 |---|---|---|---|---|

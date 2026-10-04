@@ -100,6 +100,7 @@ def fit_twin(file, start_s):
     start = float(start_s)
     m = (t >= start) & (t < start + WIN_S)
     x = compute_features(ch[m], t[m] - start, WIN_S)
+    torch.manual_seed(0)                    # the same recording always gives the same twin
     samples, leak = sample_many(POSTERIOR, _keep(x)[None], n=500)
     s = samples[:, 0]
     rows = []
@@ -133,13 +134,15 @@ def in_silico(file, start_s, inhibition, drive, synaptic_decay, seed):
     start = float(start_s)
     m = (t >= start) & (t < start + WIN_S)
     x = compute_features(ch[m], t[m] - start, WIN_S)
-    samples, _ = sample_many(POSTERIOR, _keep(x)[None], n=200)
+    torch.manual_seed(0)                    # the same twin as in step 2
+    samples, _ = sample_many(POSTERIOR, _keep(x)[None], n=500)
     theta = np.median(samples[:, 0], axis=0)
     mod = theta.copy()
     for name, factor in (("g_ie", inhibition), ("mu", drive), ("tau_syn", synaptic_decay)):
         if name in POST_NAMES:
             mod[POST_NAMES.index(name)] *= float(factor)
-    out = simulate(np.stack([theta, mod]), CFG, duration_s=120.0, warmup_s=10.0, seed=int(seed))
+    # the same seed gives both runs the same network and noise, so they differ only by the change
+    out = [simulate(th[None], CFG, duration_s=120.0, warmup_s=10.0, seed=int(seed))[0] for th in (theta, mod)]
     figs = []
     for (e, tt), name in zip(out, ["fitted twin", "after the in-silico change"]):
         figs.append(raster_fig(e, tt, 0, 60, name, color="C3"))
