@@ -1,7 +1,6 @@
 # NeuroTwin: calibrated digital twins of neural organ-on-a-chip cultures — technical report (draft)
 
 > Draft v0.3 (2026-10-04). Results sections are filled only with measured numbers; `[TBD]` marks pending work.
-> References marked `[verify]` still need a final check before submission.
 
 ## 1. Problem definition and application scenario
 
@@ -81,13 +80,19 @@ The terms are:
   τ_syn, normalised so the total voltage delivered per spike equals the weight. This sets how long a network
   burst lasts and its rise/decay shape. As τ_syn goes to zero the model reduces exactly to instantaneous
   synapses (model v2), which a regression test checks bit-for-bit.
+- **Slow excitatory current (model v4).** A fraction f_slow of every excitatory weight is delivered through a
+  second current that decays with time constant τ_slow, an NMDA-like component that can sustain long network
+  bursts. At f_slow = 0 the model reproduces v3 bit-for-bit, again checked by a regression test.
 
 Each electrode records the spikes of every neuron within 80 µm of its centre, which is about three neurons on
 average, as in multi-unit recordings. The inner loop is event-driven: only the synapses of neurons that spiked
-are touched. It is compiled with numba and parallelised over cultures. On a 4-core laptop, one 300-s culture
-takes a few seconds [TBD: exact Kaggle throughput].
+are touched. It is compiled with numba and parallelised over cultures. A 300-s culture costs about 8–10
+CPU-core seconds: a 4-core Kaggle CPU session simulates about 1,850 cultures per hour (round 1: 81,664
+cultures in 44 session-hours), and a 4-core laptop runs the 48 simulations of the worked example (§4.3) in
+about two minutes.
 
-The ten inferred parameters and their priors (uniform, or log-uniform where marked) are:
+The inferred parameters and their broad round-1 priors (uniform, or log-uniform where marked) are listed
+below; later rounds sample focused sub-boxes of these ranges (§4.3, §4.4).
 
 | Parameter | Meaning | Prior |
 |---|---|---|
@@ -102,6 +107,8 @@ The ten inferred parameters and their priors (uniform, or log-uniform where mark
 | σ | membrane noise (mV) | 1–6 |
 | λ | connection length scale (µm) | 100–3000, log |
 | τ_syn | synaptic current decay (ms) | 0.5–150, log (added in model v3) |
+| f_slow | share of excitatory weight carried by the slow current | 0–0.8 (added in model v4) |
+| τ_slow | slow excitatory current decay (ms) | 20–400, log (added in model v4) |
 
 The priors were set by prior-predictive checks against the real recordings. A first version could not
 produce the long, rare network bursts on top of tonic firing seen in real cultures. The fix was to add
@@ -147,15 +154,18 @@ amortisation is what makes population-scale twins of all 3,049 windows feasible.
    are clipped to the box rather than rejected, because rejection sampling stalls on out-of-support inputs.
 
 **Posterior predictive checks.** Recordings spanning development are re-simulated from posterior draws, and
-the observed statistics are compared with the predictive intervals. The same comparison against prior draws
-serves as an uninformed baseline.
+the observed statistics are compared with the predictive intervals. The baseline is a mismatched twin, drawn
+from the posterior of a different recording (§4.2 explains why the prior is not a useful baseline).
 
-[TBD: second, truncated simulation round concentrated on the region supported by real data (Deistler et al.
-2022).]
+**Focused rounds.** Rounds 2 and 3 concentrate simulations on the part of parameter space that real
+recordings support: a sub-box around the simulations nearest to real windows, in the spirit of truncated
+sequential NPE (Deistler et al. 2022). Each round's posterior is trained on that round's bank, with the box as
+its prior, and is checked by the same reliability layer.
 
 ### 3.4 Label-free structural module
 
-A U-Net maps 5 phase-contrast focal planes to DAPI and propidium-iodide images of rat cortical cultures. The
+A U-Net maps a phase-contrast z-stack (5 focal planes in the first run, all 13 in the second) to DAPI and
+propidium-iodide images of rat cortical cultures. The
 images are block-averaged 2× to 1223 × 1223 pixels, since nuclei are about 25–40 px across at full
 resolution. Each output pixel is a Gaussian: the network is trained with the heteroscedastic negative
 log-likelihood, and, when a GPU is available, a 3-seed deep ensemble adds model uncertainty. One scale factor
@@ -169,13 +179,13 @@ The readouts are those an experimenter actually uses:
 Their 90% intervals are obtained by sampling spatially smooth predictive noise. On the 8 official test wells,
 the module is compared against the real stains and against the published 2018 model's predictions for the
 same wells. The live-neuron density and viability it measures are the structural inputs for the twin.
-[TBD: results.]
+Results are in §4.6.
 
 ### 3.5 Oriented-circuit twin and in-silico chip design
 
 CellShells' founding lab builds oriented neuronal circuits with "axon diodes": two culture chambers joined by
-asymmetric microchannels that let axons grow in one direction far more easily than in the other (Peyrin et
-al. 2011). The simulator has a two-chamber mode (`ChipConfig(compartments=2)`) that mirrors this geometry:
+asymmetric microchannels that let axons grow in one direction far more easily than in the other, with 97%
+selectivity for the intended direction (Peyrin et al. 2011). The simulator has a two-chamber mode (`ChipConfig(compartments=2)`) that mirrors this geometry:
 
 - **Somata and local wiring.** Somata are excluded from a 400 µm barrier strip in the middle of the chip,
   and local distance-dependent wiring stays within each chamber.
@@ -218,15 +228,15 @@ correctly found to be independent. The leader index has the right sign but is no
 therefore a noisy estimate of direction, which is why amortised inference combines all directional and global
 statistics and reports its uncertainty on (p_fwd, p_bwd).
 
-[TBD: posterior recovery of (p_fwd, p_bwd); dependence on recording length; design map of directionality
-versus channel asymmetry.]
+Posterior recovery of (p_fwd, p_bwd) and a design map of the inferred asymmetry are reported in §4.5; how
+long a chip must be recorded to read its direction reliably is the next experiment.
 
 ## 4. Experiments and results
 
 ### 4.1 Round 1: does the simulator cover real recordings?
 
 A first bank of **81,664 virtual cultures** of 300 s each was generated from the broad prior of §3.1 on four
-Kaggle CPU sessions (about 44 CPU-hours; 19.2k / 20.9k / 22.0k / 19.6k per shard). Before fitting anything,
+Kaggle CPU sessions (about 44 session-hours; 19.2k / 20.9k / 22.0k / 19.6k per shard). Before fitting anything,
 we asked whether real recordings lie inside the region the simulator can produce. Features were z-scored
 using the bank, and each real window's distance to its 10 nearest simulations was compared with the same
 quantity for 5,000 held-out simulations.
@@ -616,19 +626,19 @@ assistant (Anthropic Claude); design decisions and results were verified by the 
 
 ## References
 
-- Christiansen E.M. et al. (2018). In silico labeling: predicting fluorescent labels in unlabeled images. *Cell* 173:792–803.
+- Christiansen E.M. et al. (2018). In silico labeling: predicting fluorescent labels in unlabeled images. *Cell* 173:792–803. doi:10.1016/j.cell.2018.03.040
 - Deistler M., Goncalves P.J., Macke J.H. (2022). Truncated proposals for scalable and hassle-free simulation-based inference. *NeurIPS*.
-- DiMasi J.A., Grabowski H.G., Hansen R.W. (2016). Innovation in the pharmaceutical industry: new estimates of R&D costs. *J. Health Econ.* 47:20–33.
+- DiMasi J.A., Grabowski H.G., Hansen R.W. (2016). Innovation in the pharmaceutical industry: new estimates of R&D costs. *J. Health Econ.* 47:20–33. doi:10.1016/j.jhealeco.2016.01.012
 - Durkan C., Bekasov A., Murray I., Papamakarios G. (2019). Neural spline flows. *NeurIPS*.
-- Gonçalves P.J. et al. (2020). Training deep neural density estimators to identify mechanistic models of neural dynamics. *eLife* 9:e56261.
+- Gonçalves P.J. et al. (2020). Training deep neural density estimators to identify mechanistic models of neural dynamics. *eLife* 9:e56261. doi:10.7554/eLife.56261
 - Greenberg D., Nonnenmacher M., Macke J. (2019). Automatic posterior transformation for likelihood-free inference. *ICML*.
 - Lemos P. et al. (2023). Sampling-based accuracy testing of posterior estimators for general inference. *ICML*.
 - Papamakarios G., Murray I. (2016). Fast ε-free inference of simulation models with Bayesian conditional density estimation. *NeurIPS*.
-- Peyrin J.-M. et al. (2011). Axon diodes for the reconstruction of oriented neuronal networks in microfluidic chambers. *Lab Chip* 11:3663–3673. [verify pages]
+- Peyrin J.-M. et al. (2011). Axon diodes for the reconstruction of oriented neuronal networks in microfluidic chambers. *Lab Chip* 11:3663–3673. doi:10.1039/c1lc20014c
 - Talts S. et al. (2018). Validating Bayesian inference algorithms with simulation-based calibration. *arXiv:1804.06788*.
 - Tejero-Cantero A. et al. (2020). sbi: a toolkit for simulation-based inference. *J. Open Source Softw.* 5:2505.
-- Tsodyks M., Uziel A., Markram H. (2000). Synchrony generation in recurrent networks with frequency-dependent synapses. *J. Neurosci.* 20:RC50. [verify]
-- Wagenaar D.A., Pine J., Potter S.M. (2006). An extremely rich repertoire of bursting patterns during the development of cortical cultures. *BMC Neurosci.* 7:11.
-- Wong C.H., Siah K.W., Lo A.W. (2019). Estimation of clinical trial success rates and related parameters. *Biostatistics* 20:273–286.
+- Tsodyks M., Uziel A., Markram H. (2000). Synchrony generation in recurrent networks with frequency-dependent synapses. *J. Neurosci.* 20:RC50. doi:10.1523/JNEUROSCI.20-01-j0003.2000
+- Wagenaar D.A., Pine J., Potter S.M. (2006). An extremely rich repertoire of bursting patterns during the development of cortical cultures. *BMC Neurosci.* 7:11. doi:10.1186/1471-2202-7-11
+- Wong C.H., Siah K.W., Lo A.W. (2019). Estimation of clinical trial success rates and related parameters. *Biostatistics* 20:273–286. doi:10.1093/biostatistics/kxx069
 - US FDA (2025). Roadmap to reducing animal testing in preclinical safety studies. https://www.fda.gov/media/186092/download
 - FDA Modernization Act 2.0, S.5002, 117th Congress (2022).
