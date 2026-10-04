@@ -8,6 +8,7 @@ Run locally:   python app/app.py
 The assets (a trained posterior and bank summary) are produced by the Kaggle training notebook.
 """
 import glob
+import json
 import os
 import sys
 
@@ -33,12 +34,23 @@ CFG = ChipConfig()
 def _load_assets():
     post = glob.glob(os.path.join(ASSETS, "**", "posterior.pt"), recursive=True)
     bank = glob.glob(os.path.join(ASSETS, "**", "twin_assets.npz"), recursive=True)
+    box = glob.glob(os.path.join(ASSETS, "**", "focus_box.json"), recursive=True)
     posterior = torch.load(post[0], weights_only=False) if post else None
     stats = np.load(bank[0]) if bank else None
-    return posterior, stats
+    names = PARAM_NAMES
+    if box:                       # the posterior's parameters and prior box (older models have fewer)
+        b = json.load(open(box[0]))
+        names = [k for k in PARAM_NAMES if k in b]
+        import neurotwin.infer as inf
+        import neurotwin.sim as sim
+        sim.LO = np.array([b[k][0] for k in names], float)
+        sim.HI = np.array([b[k][1] for k in names], float)
+        sim.LOG = np.array([b[k][2] == "log" for k in names])
+        inf.Z_LO, inf.Z_HI = sim.to_unbounded(sim.LO), sim.to_unbounded(sim.HI)
+    return posterior, stats, names
 
 
-POSTERIOR, BANK = _load_assets()
+POSTERIOR, BANK, POST_NAMES = _load_assets()
 
 
 def read_spikes(path):
@@ -91,7 +103,7 @@ def fit_twin(file, start_s):
     samples, leak = sample_many(POSTERIOR, _keep(x)[None], n=500)
     s = samples[:, 0]
     rows = []
-    for i, p in enumerate(PARAM_NAMES):
+    for i, p in enumerate(POST_NAMES):
         q = np.percentile(s[:, i], [5, 50, 95])
         rows.append({"parameter": p, "median": round(q[1], 3), "90% interval": f"{q[0]:.3g} – {q[2]:.3g}"})
     warn = ""
@@ -104,10 +116,10 @@ def fit_twin(file, start_s):
                 "\n\nReliability: the recording lies inside the simulated range.")
     if leak[0] > 0.2:
         warn += f"\n\n**{leak[0]:.0%} of the posterior falls outside the parameter ranges — treat with care.**"
-    fig, ax = plt.subplots(1, len(PARAM_NAMES), figsize=(2.0 * len(PARAM_NAMES), 3))
+    fig, ax = plt.subplots(1, len(POST_NAMES), figsize=(2.0 * len(POST_NAMES), 3))
     for i, a in enumerate(ax):
         a.violinplot(s[:, i], showextrema=False)
-        a.set_title(PARAM_NAMES[i], fontsize=8); a.set_xticks([])
+        a.set_title(POST_NAMES[i], fontsize=8); a.set_xticks([])
     fig.suptitle("posterior over the twin's biophysical parameters")
     fig.tight_layout()
     return fig, pd.DataFrame(rows), "Twin fitted." + warn
@@ -125,8 +137,8 @@ def in_silico(file, start_s, inhibition, drive, synaptic_decay, seed):
     theta = np.median(samples[:, 0], axis=0)
     mod = theta.copy()
     for name, factor in (("g_ie", inhibition), ("mu", drive), ("tau_syn", synaptic_decay)):
-        if name in PARAM_NAMES:
-            mod[PARAM_NAMES.index(name)] *= float(factor)
+        if name in POST_NAMES:
+            mod[POST_NAMES.index(name)] *= float(factor)
     out = simulate(np.stack([theta, mod]), CFG, duration_s=120.0, warmup_s=10.0, seed=int(seed))
     figs = []
     for (e, tt), name in zip(out, ["fitted twin", "after the in-silico change"]):

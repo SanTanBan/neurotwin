@@ -23,8 +23,9 @@ import torch  # noqa: E402
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-WORK = "/kaggle/working" if os.path.isdir("/kaggle/working") else "."
-INPUT = "/kaggle/input" if os.path.isdir("/kaggle/input") else "."
+ON_KAGGLE = os.name != "nt" and os.path.isdir("/kaggle/working")   # a local D:\kaggle folder must not count
+WORK = "/kaggle/working" if ON_KAGGLE else "."
+INPUT = "/kaggle/input" if ON_KAGGLE else "."
 WIN_S = 300.0
 RECORDING = "2-2-20"          # culture 2-2 at 20 days in vitro
 N_POST = 500
@@ -48,17 +49,23 @@ def find(pattern):
 
 
 def apply_box(box):
-    global LO, HI, LOG, Z_LO, Z_HI
-    LO = np.array([box[k][0] for k in PARAM_NAMES], float)
-    HI = np.array([box[k][1] for k in PARAM_NAMES], float)
-    LOG = np.array([box[k][2] == "log" for k in PARAM_NAMES])
+    """The posterior's parameters are those in its box (an older model version may have fewer)."""
+    global LO, HI, LOG, Z_LO, Z_HI, POST_NAMES
+    POST_NAMES = [k for k in PARAM_NAMES if k in box]
+    LO = np.array([box[k][0] for k in POST_NAMES], float)
+    HI = np.array([box[k][1] for k in POST_NAMES], float)
+    LOG = np.array([box[k][2] == "log" for k in POST_NAMES])
     Z_LO, Z_HI = to_unbounded(LO), to_unbounded(HI)
 
 
-def raster(ax, e, t, t0, t1, title, color="k"):
+def raster(ax, ax_rate, e, t, t0, t1, title, color="k"):
+    """Raster plus population rate (50-ms bins), so network bursts stand out."""
     m = (t >= t0) & (t < t1)
-    ax.scatter(t[m] - t0, e[m], s=0.4, c=color)
-    ax.set_title(title, fontsize=10); ax.set_xlabel("time (s)"); ax.set_ylabel("electrode")
+    ax.scatter(t[m] - t0, e[m], s=0.3, c=color)
+    ax.set_title(title, fontsize=11); ax.set_ylabel("electrode"); ax.tick_params(labelbottom=False)
+    h, edges = np.histogram(t[m] - t0, bins=np.arange(0, t1 - t0 + 1e-9, 0.05))
+    ax_rate.plot(edges[:-1], h / 0.05, color=color, lw=0.7)
+    ax_rate.set_xlabel("time (s)"); ax_rate.set_ylabel("spikes/s")
 
 
 def main():
@@ -73,13 +80,14 @@ def main():
     print(f"recording {RECORDING}: {len(t):,} spikes, {len(np.unique(ch))} active electrodes, {t.max():.0f} s")
     print(pd.DataFrame({"statistic": FEATURE_NAMES, "value": np.round(x, 3)}).to_string(index=False))
 
+    torch.manual_seed(0)                                         # reproducible posterior draws
     t1 = time.time()
     keep = assets["keep"] if "keep" in assets.files else np.arange(len(x))   # statistics used for inference
     samples, leak = sample_many(posterior, x[keep][None], n=N_POST)
     s = samples[:, 0]
     print(f"\ntwin fitted in {time.time() - t1:.2f} s")
     q = np.percentile(s, [5, 50, 95], axis=0)
-    print(pd.DataFrame({"parameter": PARAM_NAMES, "median": np.round(q[1], 3),
+    print(pd.DataFrame({"parameter": POST_NAMES, "median": np.round(q[1], 3),
                         "90% interval": [f"{a:.3g} - {b:.3g}" for a, b in zip(q[0], q[2])]}).to_string(index=False))
 
     z = (x[keep] - assets["mu"]) / (assets["sd"] + 1e-9)
@@ -91,15 +99,15 @@ def main():
 
     theta = np.median(s, 0)
     modified = theta.copy()
-    modified[PARAM_NAMES.index("g_ie")] *= 0.5                    # the in-silico experiment
+    modified[POST_NAMES.index("g_ie")] *= 0.5                    # the in-silico experiment
     sims = simulate(np.stack([theta, modified]), ChipConfig(), duration_s=WIN_S, warmup_s=10.0, seed=7)
     x_twin = compute_features(*sims[0], WIN_S)
     x_half = compute_features(*sims[1], WIN_S)
 
-    fig, ax = plt.subplots(1, 3, figsize=(16, 4.2))
-    raster(ax[0], ch, t, 600, 660, f"real culture {RECORDING} (60 s)")
-    raster(ax[1], *sims[0], 0, 60, "its digital twin", "C3")
-    raster(ax[2], *sims[1], 0, 60, "twin with inhibition halved", "C0")
+    fig, ax = plt.subplots(2, 3, figsize=(16, 5.6), height_ratios=[3, 1], sharex="col")
+    raster(ax[0, 0], ax[1, 0], ch, t, 0, 60, f"real culture {RECORDING}: first 60 s of the fitted window")
+    raster(ax[0, 1], ax[1, 1], *sims[0], 0, 60, "its digital twin (posterior median)", "C3")
+    raster(ax[0, 2], ax[1, 2], *sims[1], 0, 60, "twin with inhibition halved (in silico)", "C0")
     fig.tight_layout(); fig.savefig(os.path.join(WORK, "demo_rasters.png"), dpi=110); plt.close(fig)
 
     cmp = pd.DataFrame({"statistic": FEATURE_NAMES, "real": np.round(x, 2), "twin": np.round(x_twin, 2),
