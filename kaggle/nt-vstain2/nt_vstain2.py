@@ -35,7 +35,7 @@ N_MODELS = 3 if DEVICE == "cuda" else 1
 ITERS = 8000 if DEVICE == "cuda" else 2500
 BATCH = 16 if DEVICE == "cuda" else 8
 CROP = 256
-LR = 1e-3
+LR = 5e-4
 N_VAL = 8
 TARGETS = ("dapi", "dead")
 DATA_DIR = "isl_alicia13"
@@ -229,10 +229,14 @@ def train_one(train, val, seed):
     for it in range(1, ITERS + 1):
         model.train()
         x, y = random_batch(train, rng)
-        with torch.autocast(DEVICE, enabled=DEVICE == "cuda"):
-            m, lv = model(x)
-        loss = nll_loss(m.float(), lv.float(), y)
-        opt.zero_grad(set_to_none=True); loss.backward(); opt.step(); sched.step()
+        m, lv = model(x)                       # full precision: fp16 overflowed in the variance term
+        loss = nll_loss(m, lv, y)
+        opt.zero_grad(set_to_none=True)
+        if torch.isfinite(loss):
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            opt.step()
+        sched.step()
         if it % 500 == 0 or it == ITERS:
             model.eval()
             with torch.no_grad():
@@ -242,7 +246,7 @@ def train_one(train, val, seed):
                 best, best_state = vloss, {k: v.detach().clone() for k, v in model.state_dict().items()}
             print(f"[seed {seed}] it {it} train {loss.item():.3f} val {vloss:.3f} ({time.time() - t0:.0f}s)", flush=True)
     model.load_state_dict(best_state)
-    return model
+    return model, best
 
 
 def ensemble_predict(models, phase):
@@ -268,13 +272,20 @@ def calibrate_readout(val_pred, val_true):
     truth = [readout(w["dapi"], w["dead"], DEFAULT) for w in val_true]
     grid = [dict(zip(("sigma", "k_mad", "min_dist", "dead_rel"), v))
             for v in itertools.product([1.5, 2.0, 3.0, 4.0], [3.0, 5.0, 8.0, 12.0], [4, 5, 7, 9], [0.2, 0.3, 0.4, 0.5])]
-    best, best_err = DEFAULT, np.inf
-    for p in grid:
+    # counts and dead fraction are calibrated separately, so a poor dead-cell channel cannot drag the
+    # nuclei detector away from its own optimum
+    best, best_err = dict(DEFAULT), np.inf
+    for p in [g for g in grid if g["dead_rel"] == DEFAULT["dead_rel"]]:
         est = [readout(mu[0], mu[1], p) for mu in val_pred]
-        err = np.mean([abs(e[0] - t[0]) / max(t[0], 1) for e, t in zip(est, truth)]) + \
-            np.mean([abs(e[1] - t[1]) for e, t in zip(est, truth)])
+        err = np.mean([abs(e[0] - t[0]) / max(t[0], 1) for e, t in zip(est, truth)])
         if err < best_err:
-            best, best_err = p, err
+            best, best_err = dict(p), err
+    dead_err = np.inf
+    for rel in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]:
+        q = dict(best, dead_rel=rel)
+        e = np.mean([abs(readout(mu[0], mu[1], q)[1] - t[1]) for mu, t in zip(val_pred, truth)])
+        if e < dead_err:
+            dead_err, best = e, q
     est = [readout(mu[0], mu[1], best) for mu in val_pred]
     rel_res = np.array([(e[0] - t[0]) / max(t[0], 1) for e, t in zip(est, truth)])
     dead_res = np.array([e[1] - t[1] for e, t in zip(est, truth)])
@@ -293,7 +304,11 @@ def main():
     val, train = [wells[i] for i in perm[:N_VAL]], [wells[i] for i in perm[N_VAL:]]
     print(f"{len(train)} train / {len(val)} val / {len(test)} test wells, {train[0]['phase'].shape[0]} focal "
           f"planes, {N_MODELS} models x {ITERS} iterations on {DEVICE}", flush=True)
-    models = [train_one(train, val, seed) for seed in range(N_MODELS)]
+    trained = [train_one(train, val, seed) for seed in range(N_MODELS)]
+    best_val = min(b for _, b in trained)
+    models = [m for m, b in trained if np.isfinite(b) and b <= best_val + 0.5]   # drop diverged members
+    print(f"ensemble: kept {len(models)} of {len(trained)} models (best validation NLLs "
+          f"{[round(float(b), 3) for _, b in trained]})", flush=True)
     torch.save([m.state_dict() for m in models], os.path.join(WORK, "vstain2_ensemble.pt"))
 
     val_pred, errs, sds = [], [], []
