@@ -300,6 +300,105 @@ enormously wide, so the comparison flattered the baseline and means little. From
 a *mismatched* twin: parameters drawn from the posterior of a **different** recording. A twin is only useful
 if it predicts its own recording better than another recording's twin does.
 
+### 4.3 Round 2: model v3 and a prior focused on real cultures
+
+The round-2 bank of **20,096 virtual cultures** used model v3 and sampled a box centred on the simulations
+closest to mature real recordings. It concentrated simulations where they are useful: **28.7%** of them burst
+synchronously, against 12.9% in round 1.
+
+**Calibration on 500 held-out simulations remains sound.**
+
+| | j_e | g_ie | u | τ_rec | b | τ_a | µ | µ_sd | σ | λ | τ_syn |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| R² | 0.32 | 0.05 | 0.38 | 0.08 | 0.39 | 0.44 | 0.23 | 0.22 | 0.54 | 0.02 | 0.29 |
+| 90% coverage | 0.91 | 0.89 | 0.91 | 0.88 | 0.89 | 0.92 | 0.89 | 0.91 | 0.90 | 0.92 | 0.92 |
+| SBC rank p | 0.99 | 0.46 | 0.23 | 0.39 | 0.08 | 0.33 | 0.52 | 0.82 | 0.16 | 0.97 | 0.52 |
+
+TARP expected-coverage deviation −0.009. As in round 1, the inhibition ratio, synaptic recovery time and
+wiring range are not identified by the 16 statistics and are reported only with their (wide) posteriors.
+
+**On real data the twin is now useful where it says it is, and only there.**
+
+| Diagnostic | Round 1 | Round 2 |
+|---|---|---|
+| Real windows outside the simulated support | 75.4% | 72.3% |
+| Mean posterior leakage | 0.84 | 0.50 |
+| Windows passing every reliability check (in support and leakage < 0.2) | — | 341 / 3,049 (11.2%) |
+
+The reliable windows span the whole of development: 26 of 355 windows at DIV ≤ 6, 79 / 444 at DIV 7–10,
+82 / 511 at DIV 11–14, 61 / 717 at DIV 15–21, 69 / 598 at DIV 22–28 and 24 / 424 at DIV 29–40.
+
+**The fitted twin is specific to its recording.** For 16 reliable recordings spanning development, 24
+posterior draws were re-simulated and their statistics compared with the recording. The baseline is a
+*mismatched* twin: draws from the posterior of a different recording.
+
+| | Own twin | Mismatched twin |
+|---|---|---|
+| Statistics inside the 90% predictive interval | **0.87** | 0.49 |
+| Median \|z\| of the observed statistics | **0.41** | 1.85 |
+| Recordings where the own twin fits better | **94%** | — |
+
+Per statistic, the own twin's 90% interval contains the observation for at least 88% of recordings on 13 of
+the 16 statistics. The exceptions are single-electrode burst duration (19%), the fraction of spikes inside
+bursts (50%) and network-burst duration (81%). These are the burst-morphology statistics that motivated
+model v4.
+
+### 4.4 Round 3: model v4
+
+A local grid at the parameters closest to mature cultures showed that adding a slow excitatory current
+(fraction 0.3–0.6 of each excitatory weight, decay 80–200 ms) lengthens network bursts from 0.29 s to about
+0.9 s. It also brings single-electrode burst duration (−0.59 vs −0.52 in log10 s) and inter-burst firing
+(0.54 vs 0.50 in log10 Hz) to the real values, while keeping the population Fano factor near 3. The burst
+rise fraction stayed near 0.5 against 0.23 in real cultures, so it is excluded from inference in round 3 as a
+documented misspecified statistic. It is still checked in the posterior predictive checks. A 3-shard bank of
+model-v4 cultures and the round-3 posterior are in progress. [TBD: round-3 results.]
+
+### 4.5 Oriented-circuit twin: reading the wiring direction
+
+A posterior over the ten base parameters plus the forward and backward crossing probabilities was trained on
+**18,560** simulated two-chamber chips (model v2; 26 statistics: 16 global and 10 directional), with 800 held
+out.
+
+| | p_fwd | p_bwd | u | b | τ_a | j_e |
+|---|---|---|---|---|---|---|
+| R² | 0.15 | 0.23 | 0.64 | 0.52 | 0.43 | 0.40 |
+| 90% coverage | 0.88 | 0.91 | 0.91 | 0.90 | 0.92 | 0.93 |
+
+TARP deviation −0.013. The posterior is honest about the wiring, but a five-minute recording says little
+about it. The sign of the engineered asymmetry (p_fwd − p_bwd) is recovered in **61.9%** of held-out chips
+overall, and in 63.6–64.1% when the asymmetry exceeds 0.3. The asymmetry estimate explains 17% of the
+variance, and the 90% interval for p_fwd is typically 0.8 wide.
+
+This result is weak, and we say so. It is consistent with the earlier ground-truth test, in which the
+onset lag recovered the direction cleanly for strong diodes (+34 ± 24 ms versus −40 ± 35 ms) but was noisy in
+general. Crossings are sparse (k_cross = 4) and five minutes contain few chamber-spanning events. The design
+question this raises — how long must a chip be recorded to read its direction reliably — is the next
+experiment. [TBD: recording-length study.]
+
+### 4.6 Label-free imaging
+
+**First run** (CPU, one model, 5 of 13 focal planes, 2,500 iterations; 8 official test wells):
+
+| | Ours | Published in-silico-labeling model |
+|---|---|---|
+| Pixel Pearson r, nuclei (DAPI) | 0.81 | 0.92 |
+| Pixel Pearson r, dead cells (PI) | 0.71 | 0.85 |
+| Nuclei count, mean absolute % error (true mean 509) | 89% | 4.8% |
+| Dead-cell fraction (true 0.26) | 0.45 | 0.27 |
+
+Two lessons. First, the model is below the published one in pixel fidelity. Second, and more important for
+an uncertainty-aware tool, its blurrier predictions produced spurious nuclei that per-pixel uncertainty did
+not capture: the 90% readout intervals contained the true count in 0 of 8 wells. A readout must therefore be
+calibrated on validation data, not only its pixels.
+
+**Second run** (GPU, three-model ensemble, all 13 planes, 8,000 iterations, readout calibrated on 8
+validation wells). Mixed-precision training made one ensemble member diverge (NaN) and another unstable, and
+the corrupted ensemble lowered pixel correlation (0.71 / 0.29). Even so, the nuclei count reached **8.1%**
+error with the default readout, and the validation-derived intervals contained the true count in **7 of 8**
+test wells. The calibrated readout did worse (18.4%), because its joint objective was dominated by the
+collapsed dead-cell channel. A corrected run is pending: full precision, gradient clipping, diverged members
+dropped, and counts and dead fraction calibrated separately. [TBD: corrected results.]
+
 ## 5. Reliability analysis and limitations
 
 **What the reliability layer checks.** Three independent signals, each of which can veto a fit:
