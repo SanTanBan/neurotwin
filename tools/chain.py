@@ -73,12 +73,13 @@ def main():
     ap.add_argument("--grace-hours", type=float, default=2.0)
     ap.add_argument("--push", nargs="+", help="folder:output_dir stages, pushed in order")
     ap.add_argument("--drop-missing-sources", action="store_true")
+    ap.add_argument("--retries", type=int, default=12, help="push attempts, 10 min apart (e.g. busy GPU slots)")
     a = ap.parse_args()
     if a.wait:
         wait_for(a.wait.split(","), a.grace_hours)
     for stage in a.push:
         folder, out = stage.split(":")
-        if not push_stage(folder, out, a.drop_missing_sources):
+        if not push_stage(folder, out, a.drop_missing_sources, retries=a.retries):
             break
 
 
