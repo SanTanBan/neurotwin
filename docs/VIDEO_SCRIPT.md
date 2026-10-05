@@ -1,29 +1,32 @@
-# Demo video script (target 4:30, hard limit 5:00)
+# Demo video script (target about 4:15, hard limit 5:00)
 
-Narration is synthesised by `tools/make_video.py`; each scene lasts as long as its narration. `[TBD]` marks
-numbers to be filled from finished runs before recording. Visuals are existing figures or short screen
-captures of the demo notebook and app.
+Narration is synthesised locally by `tools/make_video.py` (Windows speech, voice "Microsoft Zira"); each scene
+lasts as long as its narration plus 0.6 s. Every number below is taken from docs/REPORT.md; `[TBD]` marks
+results still running. Visuals are report figures (`docs/figures/`) and slides made by `tools/make_figures.py`
+(`runs/figs/`). The scene list itself is `video/scenes.json`.
 
 | # | Visual | Narration | ~s |
 |---|---|---|---|
-| 1 | Real raster, culture 2-2 at DIV 20 (`runs/figs/day1_overview.png`, panel A) | "This is a living neural circuit on a chip: rat cortical neurons growing on sixty electrodes. Every dot is a spike. Twice a minute the whole network fires together." | 18 |
-| 2 | Same raster with statistics overlaid | "Labs summarise this with firing rates, burst counts and synchrony. Useful numbers, but they only describe. They cannot tell you why the network bursts, how sure you should be, or what it would do under a change you have not tried." | 22 |
-| 3 | Architecture diagram | "NeuroTwin turns the recording into a mechanistic digital twin: a simulated culture of the same chip, whose biophysical parameters are inferred from that recording, with calibrated uncertainty." | 20 |
-| 4 | Simulator schematic: electrodes, E/I neurons, synapses | "The simulator is the chip itself: four hundred neurons on the same electrode layout, with synaptic depression, adaptation, synaptic kinetics and a noisy drive. It runs a five-minute culture in about two seconds on one core." | 22 |
-| 5 | Bank + posterior training figure | "We simulate tens of thousands of virtual cultures, then train a neural posterior estimator once. After that, fitting any recording takes about a second." | 18 |
-| 6 | `runs/figs/coverage.png` + reliability figure | "Our first attempt failed, and the system told us so. Three quarters of real recordings fell outside anything the simulator could produce, and the posterior flagged its own fits as extrapolation. A confident but wrong answer is the real danger in this field." | 28 |
-| 7 | v3 model change + focused prior | "The diagnosis was concrete: instantaneous synapses cannot make a two-second burst, and bursting cultures occupied a corner of the prior. We gave synapses realistic decay kinetics and concentrated the simulations where real cultures live." | 24 |
-| 8 | Round-2 calibration + PPC figures | "Round two: [TBD recovery/calibration numbers], and the fitted twin reproduces its own recording better than a twin fitted to a different recording." | 22 |
-| 9 | `trajectories.png` | "Across [TBD] recordings of [TBD] cultures the twins show how these networks mature: [TBD trajectory finding]." | 24 |
-| 10 | Demo notebook: in-silico experiment | "Because it is mechanistic, the twin answers questions the experiment did not. Halve the inhibition in silico and the network [TBD effect] — a prediction a lab can test on the same chip." | 22 |
-| 11 | Virtual staining panel (real vs ours vs 2018 baseline) | "A label-free imaging module predicts nuclei and dead-cell stains from unstained images, with per-pixel uncertainty, [TBD comparison to the published baseline]. Structure feeds the twin without staining the culture." | 24 |
-| 12 | Two-chamber design map | "For oriented chips built with axon diodes, the twin reads which way axons were engineered to grow from the delay between chambers, and maps how channel asymmetry becomes functional directionality." | 22 |
-| 13 | Repo + notebooks + app | "Everything runs on CPU. The data is public, the notebooks reproduce every number, and the app fits a twin to your own recording." | 16 |
-| 14 | Closing slide | "NeuroTwin: from description to prediction for neural organs-on-chips, with uncertainty you can check." | 12 |
+| 1 | `runs/figs/real_2-2-20.png` (a 45-minute recording) | "This is a living neural circuit on a chip: rat cortical neurons growing over sixty electrodes. Every dot is a spike. Every couple of minutes, the whole network fires at once." | 12 |
+| 2 | `runs/figs/day1_overview.png` (development across 522 recordings) | "Labs summarise recordings like these with firing rates, burst counts and synchrony, and watch them change as cultures mature. These numbers describe. They cannot say why a network bursts, how sure we should be, or what it would do under a change nobody has tried." | 18 |
+| 3 | `docs/figures/architecture.png` | "NeuroTwin turns a recording into a mechanistic digital twin: a simulated culture on the same chip, whose biophysical parameters are inferred from that recording, together with checks that say when the twin can be trusted." | 14 |
+| 4 | slide `runs/figs/simulator.png` | "The simulator is the chip itself: four hundred model neurons on the same sixty-electrode layout, with synaptic depression, adaptation, fast and slow synaptic currents, and noisy drive. A five-minute culture costs about ten seconds of one processor core." | 16 |
+| 5 | `docs/figures/round2_sbc.png` | "We simulate tens of thousands of virtual cultures and train a neural posterior estimator once. Fitting a new recording then takes a fraction of a second, and its uncertainty is honest: ninety-percent intervals contain the true value eighty-eight to ninety-two percent of the time." | 18 |
+| 6 | `docs/figures/round1_coverage.png` | "Our first round failed, and the system said so. Three in four real recording windows lay outside anything the simulator could produce, and the twin flagged its own fits as extrapolation. A confident wrong answer is the real danger in this field." | 17 |
+| 7 | slide `runs/figs/diagnosis.png` | "The diagnosis was concrete. Instantaneous synapses cannot sustain a two-second burst, and bursting cultures were rare among the simulations. We gave synapses realistic time courses, and concentrated the simulations where real cultures live." | 15 |
+| 8 | `docs/figures/ppc_own_vs_mismatched.png` | "Now each twin reproduces its own recording: eighty-seven percent of its statistics fall inside the predicted range, against forty-nine percent for the twin of a different recording. And the twin still declines most mature recordings: only eleven percent of windows pass every check, and it says which." | 19 |
+| 9 | `docs/figures/maturation.png` | "Across one hundred and thirty-four culture-days that pass every check, the twins describe maturation in mechanistic terms: within individual cultures, background drive and excitability spread rise, and spike-frequency adaptation weakens." | 13 |
+| 10 | `runs/figs/demo_top.png` (top half of Figure 8) | "Here is one culture's twin, fitted to minutes twenty to twenty-five of its recording. Like the culture, it fires large, network-wide bursts. Because the twin is mechanistic, we can ask it questions the experiment never asked." | 15 |
+| 11 | `docs/figures/demo_in_silico.png` | "Halve its excitation, and bursting stops in every version of the twin, on every simulated network: a confident prediction. Halve its inhibition, and synchrony never falls and often rises, by an amount this recording cannot pin down. The twin says so, instead of guessing. Both are experiments a lab can run on the same chip." | 23 |
+| 12 | imaging figure `[TBD]` | "A label-free imaging module predicts nuclear and dead-cell stains from unstained images, with count intervals calibrated on validation wells: [TBD, the corrected run against the published 2018 model]." | 15 |
+| 13 | `docs/figures/two_chamber.png` and `[TBD]` recording-length figure | "For oriented chips built with axon diodes, the twin reads which way the axons were engineered to grow. From five minutes of recording it gets the direction right only sixty-two percent of the time, and its intervals say so. [TBD: with forty minutes, …]. That is a design rule for chip experiments." | 22 |
+| 14 | slide `runs/figs/public.png` | "Everything is public and runs on ordinary computers: the data, the notebooks that reproduce every number, and an app that fits a twin to your own recording." | 10 |
+| 15 | `runs/figs/closing.png` | "NeuroTwin: from description to prediction for neural organs-on-chips, with uncertainty you can check." | 7 |
 
-Total ≈ 4:54 at the measured speaking rate; trim scenes 2, 7 and 13 if the recorded audio runs long.
+Estimated total about 4:15 including pauses. If the audio runs long, shorten scenes 2 and 7 first.
 
-## Recording notes
-- Screen captures: demo notebook run (scene 10) and the app's three tabs (scene 13); keep each under 15 s.
+## Rules
 - Every claim in the narration must match a number in the report; no rounding up.
 - If a module is not finished in time, drop its scene rather than describe it vaguely.
+- Scene 11 must keep both halves of the in-silico result: the firm one (excitation) and the uncertain one
+  (inhibition).

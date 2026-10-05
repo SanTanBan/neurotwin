@@ -441,10 +441,10 @@ further networks).
 | Excitation halved | 0.01 | falls to 0.01 or less on all 8 | falls to 0.02 or less in all 16 |
 
 Halving excitation gives the firmer answer: network bursting stops in every draw and on every network.
-Halving inhibition never lowers synchrony and raises it wherever there is room — the draws already close to
-full synchrony stay there, and two silent draws stay silent — but by how much depends on parameters the
-recording leaves undetermined, above all the inhibition ratio itself (R² 0.05 on simulations, against 0.32
-for excitatory efficacy). The calibrated answers are therefore "silent" and "more synchronous, by an uncertain
+Halving inhibition never lowers synchrony. It raises it by more than 0.05 in 9 of the 16 draws; the draws
+already close to full synchrony stay there, and two silent draws stay silent. How much it rises depends on
+parameters the recording leaves undetermined, above all the inhibition ratio itself (R² 0.05 on simulations,
+against 0.32 for excitatory efficacy). The calibrated answers are therefore "silent" and "more synchronous, by an uncertain
 amount". The second points to the measurement that would sharpen it: an independent handle on inhibition, such
 as one pharmacological titration. A point-estimate twin would have given both answers with the same false
 confidence. The public recordings contain no pharmacology, so neither prediction is validated here; both can be
