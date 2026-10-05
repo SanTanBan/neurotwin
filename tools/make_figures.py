@@ -108,6 +108,27 @@ def slide(name, title, lines):
     fig.savefig(os.path.join(FIG, name), dpi=120); plt.close(fig)
 
 
+def video_slides():
+    """Text slides for the video, and the top (raster) half of the worked-example figure."""
+    slide("simulator.png", "The chip simulator", ["400 model neurons on the real 60-electrode layout",
+                                                  "synaptic depression  ·  spike-frequency adaptation",
+                                                  "fast and slow synaptic currents  ·  noisy, uneven drive",
+                                                  "about 10 CPU-seconds per 5-minute culture"])
+    slide("diagnosis.png", "Diagnosis, then a fix", ["Round 1: 3 in 4 real windows outside the simulator's range",
+                                                     "real network bursts last about 2 s, simulated ones 0.4 s",
+                                                     "fix 1: synaptic currents with realistic time courses",
+                                                     "fix 2: simulate where real cultures live"])
+    slide("public.png", "Open and reproducible", ["code: github.com/SanTanBan/neurotwin  (Apache-2.0)",
+                                                  "notebooks: kaggle.com/santanubanerjee9  (nt-*)",
+                                                  "data: Wagenaar et al. 2006; Christiansen et al. 2018",
+                                                  "app: fit a twin to your own recording"])
+    demo = "docs/figures/demo_in_silico.png"
+    if os.path.exists(demo):
+        from PIL import Image
+        im = Image.open(demo)
+        im.crop((0, 0, im.width, int(im.height * 0.6))).save(os.path.join(FIG, "demo_top.png"))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--train", default="runs/nt-train2")
@@ -120,6 +141,7 @@ def main():
                                      "AI4S Open Innovation: AI for Life Science  |  End-to-End System"])
     slide("closing.png", "From description to prediction", ["for neural organs-on-chips, with uncertainty you can check",
                                                              "code and notebooks: github.com/SanTanBan/neurotwin"])
+    video_slides()
     print("figures written to", FIG)
 
 

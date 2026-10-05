@@ -1,6 +1,6 @@
 # Demo video script (target about 4:15, hard limit 5:00)
 
-Narration is synthesised locally by `tools/make_video.py` (Windows speech, voice "Microsoft Zira"); each scene
+Narration is synthesised locally by `tools/make_video.py` (Windows speech, voice "Microsoft Zira Desktop"); each scene
 lasts as long as its narration plus 0.6 s. Every number below is taken from docs/REPORT.md; `[TBD]` marks
 results still running. Visuals are report figures (`docs/figures/`) and slides made by `tools/make_figures.py`
 (`runs/figs/`). The scene list itself is `video/scenes.json`.

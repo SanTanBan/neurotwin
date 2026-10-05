@@ -1,0 +1,62 @@
+{
+ "voice": "Microsoft Zira Desktop",
+ "rate": 0,
+ "scenes": [
+  {
+   "image": "runs/figs/title.png",
+   "duration": 3.0
+  },
+  {
+   "image": "runs/figs/real_2-2-20.png",
+   "text": "This is a living neural circuit on a chip: rat cortical neurons growing over sixty electrodes. Every dot is a spike. Every couple of minutes, the whole network fires at once."
+  },
+  {
+   "image": "runs/figs/day1_overview.png",
+   "text": "Labs summarise recordings like these with firing rates, burst counts and synchrony, and watch them change as cultures mature. These numbers describe. They cannot say why a network bursts, how sure we should be, or what it would do under a change nobody has tried."
+  },
+  {
+   "image": "docs/figures/architecture.png",
+   "text": "NeuroTwin turns a recording into a mechanistic digital twin: a simulated culture on the same chip, whose biophysical parameters are inferred from that recording, together with checks that say when the twin can be trusted."
+  },
+  {
+   "image": "runs/figs/simulator.png",
+   "text": "The simulator is the chip itself: four hundred model neurons on the same sixty-electrode layout, with synaptic depression, adaptation, fast and slow synaptic currents, and noisy drive. A five-minute culture costs about ten seconds of one processor core."
+  },
+  {
+   "image": "docs/figures/round2_sbc.png",
+   "text": "We simulate tens of thousands of virtual cultures and train a neural posterior estimator once. Fitting a new recording then takes a fraction of a second, and its uncertainty is honest: ninety-percent intervals contain the true value eighty-eight to ninety-two percent of the time."
+  },
+  {
+   "image": "docs/figures/round1_coverage.png",
+   "text": "Our first round failed, and the system said so. Three in four real recording windows lay outside anything the simulator could produce, and the twin flagged its own fits as extrapolation. A confident wrong answer is the real danger in this field."
+  },
+  {
+   "image": "runs/figs/diagnosis.png",
+   "text": "The diagnosis was concrete. Instantaneous synapses cannot sustain a two-second burst, and bursting cultures were rare among the simulations. We gave synapses realistic time courses, and concentrated the simulations where real cultures live."
+  },
+  {
+   "image": "docs/figures/ppc_own_vs_mismatched.png",
+   "text": "Now each twin reproduces its own recording: eighty-seven percent of its statistics fall inside the predicted range, against forty-nine percent for the twin of a different recording. And the twin still declines most mature recordings: only eleven percent of windows pass every check, and it says which."
+  },
+  {
+   "image": "docs/figures/maturation.png",
+   "text": "Across one hundred and thirty-four culture-days that pass every check, the twins describe maturation in mechanistic terms: within individual cultures, background drive and excitability spread rise, and spike-frequency adaptation weakens."
+  },
+  {
+   "image": "runs/figs/demo_top.png",
+   "text": "Here is one culture's twin, fitted to minutes twenty to twenty-five of its recording. Like the culture, it fires large, network-wide bursts. Because the twin is mechanistic, we can ask it questions the experiment never asked."
+  },
+  {
+   "image": "docs/figures/demo_in_silico.png",
+   "text": "Halve its excitation, and bursting stops in every version of the twin, on every simulated network: a confident prediction. Halve its inhibition, and synchrony never falls and often rises, by an amount this recording cannot pin down. The twin says so, instead of guessing. Both are experiments a lab can run on the same chip."
+  },
+  {
+   "image": "runs/figs/public.png",
+   "text": "Everything is public and runs on ordinary computers: the data, the notebooks that reproduce every number, and an app that fits a twin to your own recording."
+  },
+  {
+   "image": "runs/figs/closing.png",
+   "text": "NeuroTwin: from description to prediction for neural organs-on-chips, with uncertainty you can check."
+  }
+ ]
+}
