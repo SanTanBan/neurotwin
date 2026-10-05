@@ -27,8 +27,8 @@ import torch  # noqa: E402
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-WORK = "/kaggle/working" if os.path.isdir("/kaggle/working") else "."
-INPUT = "/kaggle/input" if os.path.isdir("/kaggle/input") else "."
+WORK = "/kaggle/working" if (os.name != "nt" and os.path.isdir("/kaggle/working")) else "."
+INPUT = "/kaggle/input" if (os.name != "nt" and os.path.isdir("/kaggle/input")) else "."
 FIG = os.path.join(WORK, "figures")
 N_TEST = 1000
 N_CAL = 500
@@ -588,6 +588,32 @@ def support_check(assets, z, k=10):
     exact = "threshold_ref" in assets.files
     thr = float(assets["threshold_ref"] if exact else assets["threshold"])
     return float(support_distance(assets["x"], z, k)[0]), thr, exact
+
+
+class Assets(dict):
+    """A dict that reads like the npz twin assets (``.files`` and item access)."""
+
+    @property
+    def files(self):
+        return list(self)
+
+
+def rebuild_assets(assets, theta, x, lo, hi, n_test=1000, seed=0):
+    """Replace a training run's subsampled support reference with its whole training bank.
+
+    Replays the training notebooks' split (simulations with finite statistics inside the prior box, a numpy
+    permutation with `seed`, the first `n_test` held out) and returns None if the result does not reproduce the
+    stored feature means and standard deviations.
+    """
+    ok = np.isfinite(x).all(1) & np.all((theta >= lo - 1e-9) & (theta <= hi + 1e-9), axis=1)
+    x = x[ok]
+    tr = np.random.default_rng(seed).permutation(len(x))[n_test:]
+    mu, sd = x[tr].mean(0), x[tr].std(0)
+    if not (np.allclose(mu, assets["mu"], rtol=1e-5, atol=1e-6) and np.allclose(sd, assets["sd"], rtol=1e-5, atol=1e-6)):
+        return None
+    out = Assets({k: assets[k] for k in assets.files})
+    out.update(x=((x[tr] - mu) / (sd + 1e-9)).astype(np.float32), threshold_ref=assets["threshold"])
+    return out
 
 # ---- end src/neurotwin/infer.py ----
 

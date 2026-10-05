@@ -19,7 +19,7 @@ import pandas as pd
 LIST_URL = "https://potterlab.bme.gatech.edu/development-data/html/wget/daily.spont.dense.text.0.0.0.list"
 WIN_S = 300.0
 N_WIN = 6
-WORK = "/kaggle/working" if os.path.isdir("/kaggle/working") else "."
+WORK = "/kaggle/working" if (os.name != "nt" and os.path.isdir("/kaggle/working")) else "."
 RAW = os.path.join(WORK, "raw_tmp")
 KEEP_CULTURE = "2-2-"   # raw files kept in the output for demos
 

@@ -21,7 +21,7 @@ BASE = "https://storage.googleapis.com/in-silico-labeling/paper_data/"
 COND = "alicia_2_0"
 Z_KEEP = list(range(13))
 DS = 2
-WORK = "/kaggle/working" if os.path.isdir("/kaggle/working") else "."
+WORK = "/kaggle/working" if (os.name != "nt" and os.path.isdir("/kaggle/working")) else "."
 OUT = os.path.join(WORK, "isl_alicia13")
 
 

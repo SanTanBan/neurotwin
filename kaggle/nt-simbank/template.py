@@ -23,7 +23,7 @@ WARMUP_S = 10.0
 BATCH = 64
 TIME_BUDGET_S = 11.0 * 3600
 MAX_SIMS = 100_000
-OUT = f"/kaggle/working/bank_shard{SHARD}.npz" if os.path.isdir("/kaggle/working") else f"bank_shard{SHARD}.npz"
+OUT = f"/kaggle/working/bank_shard{SHARD}.npz" if (os.name != "nt" and os.path.isdir("/kaggle/working")) else f"bank_shard{SHARD}.npz"
 
 # @@include src/neurotwin/sim.py
 

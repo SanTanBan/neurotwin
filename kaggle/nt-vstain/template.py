@@ -21,8 +21,8 @@ import torch
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-WORK = "/kaggle/working" if os.path.isdir("/kaggle/working") else "."
-INPUT = "/kaggle/input" if os.path.isdir("/kaggle/input") else "."
+WORK = "/kaggle/working" if (os.name != "nt" and os.path.isdir("/kaggle/working")) else "."
+INPUT = "/kaggle/input" if (os.name != "nt" and os.path.isdir("/kaggle/input")) else "."
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 N_MODELS = 3 if DEVICE == "cuda" else 1
 ITERS = 6000 if DEVICE == "cuda" else 2500

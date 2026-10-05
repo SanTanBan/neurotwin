@@ -25,7 +25,7 @@ WARMUP_S = 10.0
 BATCH = 64
 TIME_BUDGET_S = 11.0 * 3600
 MAX_SIMS = 100_000
-OUT = f"/kaggle/working/bank3_shard{SHARD}.npz" if os.path.isdir("/kaggle/working") else f"bank3_shard{SHARD}.npz"
+OUT = f"/kaggle/working/bank3_shard{SHARD}.npz" if (os.name != "nt" and os.path.isdir("/kaggle/working")) else f"bank3_shard{SHARD}.npz"
 
 # Focused prior: the 10-90% range of the simulations closest to real mature windows, widened for safety.
 # j_e reaches beyond the round-1 prior because longer synaptic currents spread the same charge over more

@@ -25,7 +25,7 @@ WARMUP_S = 10.0
 BATCH = 64
 TIME_BUDGET_S = 11.0 * 3600
 MAX_SIMS = 100_000
-OUT = f"/kaggle/working/bank2c_shard{SHARD}.npz" if os.path.isdir("/kaggle/working") else f"bank2c_shard{SHARD}.npz"
+OUT = f"/kaggle/working/bank2c_shard{SHARD}.npz" if (os.name != "nt" and os.path.isdir("/kaggle/working")) else f"bank2c_shard{SHARD}.npz"
 
 BASE_BOX = {
     "j_e": (6.0, 20.0, "log"), "g_ie": (0.3, 1.5, "log"), "u_std": (0.05, 0.4, "log"),

@@ -27,8 +27,8 @@ import torch  # noqa: E402
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-WORK = "/kaggle/working" if os.path.isdir("/kaggle/working") else "."
-INPUT = "/kaggle/input" if os.path.isdir("/kaggle/input") else "."
+WORK = "/kaggle/working" if (os.name != "nt" and os.path.isdir("/kaggle/working")) else "."
+INPUT = "/kaggle/input" if (os.name != "nt" and os.path.isdir("/kaggle/input")) else "."
 FIG = os.path.join(WORK, "figures")
 N_TEST = 1000
 N_CAL = 500
