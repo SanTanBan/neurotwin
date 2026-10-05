@@ -642,6 +642,32 @@ def support_check(assets, z, k=10):
     thr = float(assets["threshold_ref"] if exact else assets["threshold"])
     return float(support_distance(assets["x"], z, k)[0]), thr, exact
 
+
+class Assets(dict):
+    """A dict that reads like the npz twin assets (``.files`` and item access)."""
+
+    @property
+    def files(self):
+        return list(self)
+
+
+def rebuild_assets(assets, theta, x, lo, hi, n_test=1000, seed=0):
+    """Replace a training run's subsampled support reference with its whole training bank.
+
+    Replays the training notebooks' split (simulations with finite statistics inside the prior box, a numpy
+    permutation with `seed`, the first `n_test` held out) and returns None if the result does not reproduce the
+    stored feature means and standard deviations.
+    """
+    ok = np.isfinite(x).all(1) & np.all((theta >= lo - 1e-9) & (theta <= hi + 1e-9), axis=1)
+    x = x[ok]
+    tr = np.random.default_rng(seed).permutation(len(x))[n_test:]
+    mu, sd = x[tr].mean(0), x[tr].std(0)
+    if not (np.allclose(mu, assets["mu"], rtol=1e-5, atol=1e-6) and np.allclose(sd, assets["sd"], rtol=1e-5, atol=1e-6)):
+        return None
+    out = Assets({k: assets[k] for k in assets.files})
+    out.update(x=((x[tr] - mu) / (sd + 1e-9)).astype(np.float32), threshold_ref=assets["threshold"])
+    return out
+
 # ---- end src/neurotwin/infer.py ----
 
 # ---- begin src/neurotwin/ppc.py ----
@@ -721,6 +747,11 @@ def main():
     apply_box({k: tuple(v) for k, v in box.items()})
     posterior = torch.load(find("posterior.pt"), weights_only=False)
     assets = np.load(find("twin_assets.npz"))
+    banks = sorted(glob.glob(os.path.join(INPUT, "**", "bank2_shard*.npz"), recursive=True))
+    if "threshold_ref" not in assets.files and banks:      # round-2 assets hold a subsample: rebuild the reference
+        full = rebuild_assets(assets, np.concatenate([np.load(f)["theta"] for f in banks]),
+                              np.concatenate([np.load(f)["x"] for f in banks]), LO, HI)
+        assets = full if full is not None else assets
 
     ch, t = load_spk(find(f"{RECORDING}.spk.txt.bz2"))
     m = (t >= START_S) & (t < START_S + WIN_S)

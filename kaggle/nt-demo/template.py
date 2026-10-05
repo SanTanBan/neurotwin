@@ -90,6 +90,11 @@ def main():
     apply_box({k: tuple(v) for k, v in box.items()})
     posterior = torch.load(find("posterior.pt"), weights_only=False)
     assets = np.load(find("twin_assets.npz"))
+    banks = sorted(glob.glob(os.path.join(INPUT, "**", "bank2_shard*.npz"), recursive=True))
+    if "threshold_ref" not in assets.files and banks:      # round-2 assets hold a subsample: rebuild the reference
+        full = rebuild_assets(assets, np.concatenate([np.load(f)["theta"] for f in banks]),
+                              np.concatenate([np.load(f)["x"] for f in banks]), LO, HI)
+        assets = full if full is not None else assets
 
     ch, t = load_spk(find(f"{RECORDING}.spk.txt.bz2"))
     m = (t >= START_S) & (t < START_S + WIN_S)
