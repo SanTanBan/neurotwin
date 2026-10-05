@@ -570,6 +570,25 @@ def calibration(posterior, theta_test, x_test, n_post=500):
             "c2st_ranks": sbc["c2st_ranks"].numpy(), "tarp_ecp": ecp.numpy(),
             "tarp_alpha": alpha.numpy(), "tarp_atc": float(atc), "tarp_ks_p": float(ks_p)}
 
+
+def support_distance(ref, z, k=10):
+    """Mean distance from each row of z to its k nearest rows of ref (both z-scored statistics)."""
+    ref = torch.as_tensor(np.asarray(ref, np.float32))
+    q = torch.as_tensor(np.atleast_2d(np.asarray(z, np.float32)))
+    return torch.cat([torch.cdist(c, ref).topk(k, largest=False).values.mean(1) for c in torch.split(q, 256)]).numpy()
+
+
+def support_check(assets, z, k=10):
+    """(distance, threshold, exact) of z-scored statistics against a training run's twin assets.
+
+    Assets that store the whole training bank carry the matching threshold ("threshold_ref"), so the check equals
+    the training run's. Older assets store a subsample; distances to a sparser reference set are larger, so the
+    stored threshold then over-flags slightly (conservative), and exact is False.
+    """
+    exact = "threshold_ref" in assets.files
+    thr = float(assets["threshold_ref"] if exact else assets["threshold"])
+    return float(support_distance(assets["x"], z, k)[0]), thr, exact
+
 # ---- end src/neurotwin/infer.py ----
 
 # ---- begin src/neurotwin/ppc.py ----
@@ -728,10 +747,10 @@ def main():
     xr_all = df[FEATURE_NAMES].to_numpy(np.float32)
     xr = xr_all[:, keep]
     thr = np.quantile(out_of_support_scores(x[tr], x[te]), 0.99)
-    sub = rng.choice(len(tr), size=min(5000, len(tr)), replace=False)      # assets for the interactive app
-    np.savez(os.path.join(WORK, "twin_assets.npz"), mu=x[tr].mean(0), sd=x[tr].std(0), threshold=thr,
-             x=((x[tr][sub] - x[tr].mean(0)) / (x[tr].std(0) + 1e-9)).astype(np.float32),
-             feature_names=np.array(FEATURE_NAMES), param_names=np.array(PARAM_NAMES), keep=np.array(keep))
+    # assets for the demo and the app: the whole training bank, so their support check equals this one
+    np.savez_compressed(os.path.join(WORK, "twin_assets.npz"), mu=x[tr].mean(0), sd=x[tr].std(0), threshold=thr,
+                        threshold_ref=thr, x=((x[tr] - x[tr].mean(0)) / (x[tr].std(0) + 1e-9)).astype(np.float32),
+                        feature_names=np.array(FEATURE_NAMES), param_names=np.array(PARAM_NAMES), keep=np.array(keep))
     df["oos_score"] = out_of_support_scores(x[tr], xr)
     thr16 = np.quantile(out_of_support_scores(x_all[tr], x_all[te]), 0.99)
     df["out_of_support_all16"] = out_of_support_scores(x_all[tr], xr_all) > thr16

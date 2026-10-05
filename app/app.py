@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 from neurotwin.features import FEATURE_NAMES, compute_features  # noqa: E402
-from neurotwin.infer import sample_many  # noqa: E402
+from neurotwin.infer import sample_many, support_check  # noqa: E402
 from neurotwin.sim import ChipConfig, PARAM_NAMES, simulate  # noqa: E402
 
 ASSETS = os.environ.get("NEUROTWIN_ASSETS", "runs/nt-train2")
@@ -109,9 +109,8 @@ def fit_twin(file, start_s):
         rows.append({"parameter": p, "median": round(q[1], 3), "90% interval": f"{q[0]:.3g} – {q[2]:.3g}"})
     warn = ""
     if BANK is not None:
-        z = (_keep(x) - BANK["mu"]) / (BANK["sd"] + 1e-9)
-        d = np.linalg.norm(BANK["x"] - z, axis=1)
-        oos = np.mean(np.sort(d)[:10]) > float(BANK["threshold"])
+        dist, thr, _ = support_check(BANK, (_keep(x) - BANK["mu"]) / (BANK["sd"] + 1e-9))
+        oos = dist > thr
         warn = ("\n\n**Reliability: this recording is unlike anything the simulator produces, so the fit is "
                 "extrapolation and should not be trusted.**" if oos else
                 "\n\nReliability: the recording lies inside the simulated range.")

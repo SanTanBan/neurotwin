@@ -168,10 +168,10 @@ def main():
     xr_all = df[FEATURE_NAMES].to_numpy(np.float32)
     xr = xr_all[:, keep]
     thr = np.quantile(out_of_support_scores(x[tr], x[te]), 0.99)
-    sub = rng.choice(len(tr), size=min(5000, len(tr)), replace=False)      # assets for the interactive app
-    np.savez(os.path.join(WORK, "twin_assets.npz"), mu=x[tr].mean(0), sd=x[tr].std(0), threshold=thr,
-             x=((x[tr][sub] - x[tr].mean(0)) / (x[tr].std(0) + 1e-9)).astype(np.float32),
-             feature_names=np.array(FEATURE_NAMES), param_names=np.array(PARAM_NAMES), keep=np.array(keep))
+    # assets for the demo and the app: the whole training bank, so their support check equals this one
+    np.savez_compressed(os.path.join(WORK, "twin_assets.npz"), mu=x[tr].mean(0), sd=x[tr].std(0), threshold=thr,
+                        threshold_ref=thr, x=((x[tr] - x[tr].mean(0)) / (x[tr].std(0) + 1e-9)).astype(np.float32),
+                        feature_names=np.array(FEATURE_NAMES), param_names=np.array(PARAM_NAMES), keep=np.array(keep))
     df["oos_score"] = out_of_support_scores(x[tr], xr)
     thr16 = np.quantile(out_of_support_scores(x_all[tr], x_all[te]), 0.99)
     df["out_of_support_all16"] = out_of_support_scores(x_all[tr], xr_all) > thr16

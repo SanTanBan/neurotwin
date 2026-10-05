@@ -88,8 +88,8 @@ Each electrode records the spikes of every neuron within 80 µm of its centre, w
 average, as in multi-unit recordings. The inner loop is event-driven: only the synapses of neurons that spiked
 are touched. It is compiled with numba and parallelised over cultures. A 300-s culture costs about 8–10
 CPU-core seconds: a 4-core Kaggle CPU session simulates about 1,850 cultures per hour (round 1: 81,664
-cultures in 44 session-hours), and a 4-core laptop runs the 48 simulations of the worked example (§4.3) in
-about two minutes.
+cultures in 44 session-hours), and a 4-core laptop ran the 72 simulations of the worked example (§4.3) in
+about six minutes.
 
 The inferred parameters and their broad round-1 priors (uniform, or log-uniform where marked) are listed
 below; later rounds sample focused sub-boxes of these ranges (§4.3, §4.4).
@@ -410,43 +410,52 @@ so the trends describe the part of each culture's repertoire that the model repr
 *Figure 7. Posterior medians of reliable windows against age. Grey: individual cultures; red: median and
 interquartile range per age bin.*
 
-**A worked example and an in-silico experiment.** The `nt-demo` notebook fits the twin of culture 2-2 at DIV
-20 from the first 300 s of its recording (Figure 8). The amortised posterior returns 500 draws in under 0.2 s
-on a laptop CPU, and the recording passes both checks: its distance to the nearest simulations is 0.52
-against a threshold of 0.90, and 9% of the posterior mass falls outside the parameter box. Re-simulating 16
-posterior draws, each on its own random network, places 13 of the 16 observed statistics inside the draws'
-90% range. The three misses are single-electrode burst duration, network-burst duration and the regularity
-of network bursts, the burst-morphology statistics that model v4 addresses.
+**A worked example and two in-silico experiments.** The `nt-demo` notebook fits the twin of culture 2-2 at
+DIV 20 from minutes 20–25 of its recording (Figure 8). By then the culture fires large network bursts that
+recruit most electrodes (synchrony 0.76); the first ten minutes of the same recording are much quieter, a
+reminder that a five-minute window is a snapshot. The amortised posterior returns 500 draws in about 0.2 s on a
+laptop CPU, and the window passes both checks: its distance to the nearest simulations is 0.78 against a
+threshold of 0.90, and 11% of the posterior mass falls outside the parameter box. Re-simulating 16 posterior
+draws, each on its own random network, places 15 of the 16 observed statistics inside the draws' 90% range.
+The one miss is network-burst duration — real bursts last longer — the gap that model v4 addresses.
 
-The twin was then asked a question the recording cannot answer: what would this culture do with half the
-inhibition? Each modified run is paired with an unmodified run on the same network with the same noise, so
-a pair differs only by the intervention. Two sources of spread are kept apart: network randomness (the
-posterior-median twin on 8 random networks) and parameter uncertainty (16 posterior draws).
+The draws are not equally good. Their simulated statistics lie between 0.61 and 6.0 from the recording
+(z-scored distance; median 2.25), and Figure 8 shows the closest draw. It matches the recording's synchrony
+(0.74 vs 0.76), population Fano factor (log10 2.58 vs 2.75), share of spikes in bursts (0.44 vs 0.45) and
+burst recruitment (0.43 vs 0.43), but it fires network events more often (log10 0.94 vs 0.41 per minute). On 8
+further random networks the same parameters give synchrony between 0.05 and 0.65, so part of its close match
+is the particular network it was built on: for a bursting culture, which neurons happen to connect matters as
+well as the parameters.
 
-| Halving the inhibition ratio | Synchrony, fitted → halved (medians) | Change in synchrony | Change in log10 population Fano factor |
+The twin was then asked two questions the recording cannot answer: what would this culture do with half its
+inhibition, or with half its excitation? Halving either corresponds roughly to a partial pharmacological block
+of GABA-A or AMPA receptors, a routine MEA experiment. Each modified run is paired with an unmodified run on
+the same network with the same noise, so a pair differs only by the intervention, and two sources of spread
+are kept apart: parameter uncertainty (16 posterior draws) and network randomness (the twin shown, on 8
+further networks).
+
+| Synchrony | Twin shown | Twin shown, 8 further networks | 16 posterior draws |
 |---|---|---|---|
-| Posterior-median twin, 8 networks | 0.04 → 0.65 | +0.36 to +0.65; above +0.1 on 8 of 8 networks | +0.85 to +1.82 |
-| 16 posterior draws | 0.06 → 0.44 | median +0.02, 90% range 0.00 to +0.66; above +0.1 in 6 of 16 | median +0.16, 90% range +0.02 to +1.46 |
+| As fitted (recording: 0.76) | 0.74 | 0.05 to 0.65 | median 0.72, 90% range 0.01 to 0.99 |
+| Inhibition halved | 0.97 | rises by 0.31 to 0.90 on all 8 | median change +0.09 (90% range 0.00 to +0.91); rises by more than 0.05 in 9, falls in none |
+| Excitation halved | 0.01 | falls to 0.01 or less on all 8 | falls to 0.02 or less in all 16 |
 
-For the median twin the answer is unambiguous: on every network, halving inhibition turns asynchronous firing
-into intermittent network-wide bursts (Figure 8, third panel). Across the posterior, the direction holds —
-synchrony never falls — but the size does not: the change is below 0.01 in 7 draws and above 0.1 in 6. This
-spread comes from what the recording leaves undetermined, above all the inhibition ratio itself (R² 0.05 on
-simulations), rather than from network randomness. The calibrated answer is therefore "more synchronous,
-possibly much more", and the twin points to the measurement that would sharpen it: an independent handle on
-inhibition, such as a single pharmacological titration. A point-estimate twin would have returned one of
-these answers with false confidence. An earlier version of this experiment compared runs on different random
-networks, which conflates the intervention with network randomness; pairing the runs removed that confound.
-
-The same experiment exposes a limit of amortisation. Seven of the 16 draws are already synchronous before the
-intervention (synchrony 0.22–0.95, against 0.03 in the recording), so for this recording the posterior is
-broader than the data warrant (§5).
+Halving excitation gives the firmer answer: network bursting stops in every draw and on every network.
+Halving inhibition never lowers synchrony and raises it wherever there is room — the draws already close to
+full synchrony stay there, and two silent draws stay silent — but by how much depends on parameters the
+recording leaves undetermined, above all the inhibition ratio itself (R² 0.05 on simulations, against 0.32
+for excitatory efficacy). The calibrated answers are therefore "silent" and "more synchronous, by an uncertain
+amount". The second points to the measurement that would sharpen it: an independent handle on inhibition, such
+as one pharmacological titration. A point-estimate twin would have given both answers with the same false
+confidence. The public recordings contain no pharmacology, so neither prediction is validated here; both can be
+tested on the same chip. An earlier version of this experiment compared runs on different random networks,
+which conflates the intervention with network randomness; pairing the runs removed that confound.
 
 ![Figure 8](figures/demo_in_silico.png)
-*Figure 8. Worked example (culture 2-2, DIV 20). From left: the recording; its posterior-median twin; the
-same twin, on the same network with the same noise, with inhibition halved; and the intervention's effect on
-synchrony and on the population Fano factor across 16 posterior draws (left pair) and across 8 random
-networks for the median twin (right pair). Dashed lines: the recording.*
+*Figure 8. Worked example (culture 2-2, DIV 20, minutes 20–25). Top: one minute of the recording, of the
+closest posterior draw, and of the same twin — same network, same noise — with inhibition or excitation
+halved. Bottom: each intervention's effect on synchrony across 16 posterior draws (left pair; black: the twin
+shown) and for the twin shown on 8 further random networks (right pair). Dashed lines: the recording.*
 
 ### 4.4 Round 3: model v4
 
@@ -549,12 +558,17 @@ say "I do not know" is worse than no twin.
   widens the posterior; this is visible in the reported uncertainty rather than hidden.
 - *Amortised posteriors are calibrated on average, not for each recording.* Coverage, SBC and TARP average
   over simulated data. For a single recording the posterior can be broader than the data warrant: in the
-  worked example, 7 of 16 posterior draws burst synchronously although the recording does not. A short
+  worked example, the re-simulated draws lie between 0.61 and 6.0 from the recording, and only some of them
+  look like it. A short
   per-recording refinement — a truncated sequential round started from the amortised posterior (Deistler et
   al., 2022) — would sharpen such twins at a cost of minutes rather than milliseconds.
 - *In-silico predictions inherit the posterior's uncertainty.* An intervention on a weakly identified
-  parameter (here the inhibition ratio) gives a robust direction but an uncertain size. The twin reports both,
-  and the spread across posterior draws is the quantity a follow-up experiment should reduce.
+  parameter (here the inhibition ratio) gives a robust direction but an uncertain size, while one on a better
+  identified parameter (excitatory efficacy) gives a firm answer. The twin reports both, and the spread across
+  posterior draws is the quantity a follow-up experiment should reduce.
+- *Network randomness is part of the twin.* A twin is a distribution of networks with the same statistics, not
+  one wiring diagram; for a bursting culture the same parameters give visibly different synchrony on different
+  random networks, so a single simulated network should not be read as the culture's wiring.
 
 ## 6. Potential impact
 
@@ -590,7 +604,7 @@ notebook has no private dependencies). All of them run on ordinary CPU sessions;
 | 1 | `nt-realdata` | downloads 527 recordings from the Potter-lab archive | `wagenaar_dense_features.csv` (3,049 windows) | ~9 min |
 | 2 | `nt-simbank2/shards/s*` | none | round-2 bank `bank2_shard*.npz` (model v3, focused prior) | 11 h per shard |
 | 3 | `nt-train2` | steps 1–2 | `posterior.pt`, `calibration.json`, `real_posteriors.csv`, `ppc*.csv`, `twin_assets.npz`, figures | ~1–2 h |
-| 4 | `nt-demo` | steps 1, 3 | one worked example: fit, reliability verdict, in-silico experiment | ~5 min |
+| 4 | `nt-demo` | steps 1, 3 | one worked example: fit, reliability verdict, predictive check, two in-silico experiments | ~10 min |
 | 5 | `nt-isldata` | downloads the in-silico-labeling rat cortical wells | 81 wells (73 train / 8 test) as compact arrays | ~4 min |
 | 6 | `nt-vstain` | step 5 | virtual-staining ensemble, test metrics against the published baseline, figures | ~1–2 h CPU |
 | 7 | `nt-simbank2c` | none | two-chamber bank with directional statistics | 11 h |

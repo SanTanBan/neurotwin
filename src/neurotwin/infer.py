@@ -85,3 +85,22 @@ def calibration(posterior, theta_test, x_test, n_post=500):
     return {"ranks": ranks.numpy(), "sbc_ks_pvals": sbc["ks_pvals"].numpy(),
             "c2st_ranks": sbc["c2st_ranks"].numpy(), "tarp_ecp": ecp.numpy(),
             "tarp_alpha": alpha.numpy(), "tarp_atc": float(atc), "tarp_ks_p": float(ks_p)}
+
+
+def support_distance(ref, z, k=10):
+    """Mean distance from each row of z to its k nearest rows of ref (both z-scored statistics)."""
+    ref = torch.as_tensor(np.asarray(ref, np.float32))
+    q = torch.as_tensor(np.atleast_2d(np.asarray(z, np.float32)))
+    return torch.cat([torch.cdist(c, ref).topk(k, largest=False).values.mean(1) for c in torch.split(q, 256)]).numpy()
+
+
+def support_check(assets, z, k=10):
+    """(distance, threshold, exact) of z-scored statistics against a training run's twin assets.
+
+    Assets that store the whole training bank carry the matching threshold ("threshold_ref"), so the check equals
+    the training run's. Older assets store a subsample; distances to a sparser reference set are larger, so the
+    stored threshold then over-flags slightly (conservative), and exact is False.
+    """
+    exact = "threshold_ref" in assets.files
+    thr = float(assets["threshold_ref"] if exact else assets["threshold"])
+    return float(support_distance(assets["x"], z, k)[0]), thr, exact
