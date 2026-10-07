@@ -1,4 +1,4 @@
-# NeuroTwin: calibrated digital twins of neural organ-on-a-chip cultures — technical report (draft)
+# NeuroTwin: calibrated digital twins of neural organ-on-a-chip cultures — technical report
 
 > Version 1.0 (2026-10-07). Santanu Banerjee. Every number is produced by a public notebook (§7).
 
@@ -228,8 +228,8 @@ correctly found to be independent. The leader index has the right sign but is no
 therefore a noisy estimate of direction, which is why amortised inference combines all directional and global
 statistics and reports its uncertainty on (p_fwd, p_bwd).
 
-Posterior recovery of (p_fwd, p_bwd) and a design map of the inferred asymmetry are reported in §4.5; how
-long a chip must be recorded to read its direction reliably is the next experiment.
+Posterior recovery of (p_fwd, p_bwd), a design map of the inferred asymmetry and a study of how long a
+chip must be recorded to read its direction are reported in §4.5.
 
 ## 4. Experiments and results
 
