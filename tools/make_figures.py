@@ -44,11 +44,13 @@ def ppc_figure(train):
           f"own better in {(p.own_abs_z < p.mismatched_abs_z).mean():.0%} of {len(p)} recordings")
 
 
-def maturation_figure(train):
+def maturation_figure(train, trends=TRENDS, rows=1):
     t = pd.read_csv(os.path.join(train, "trajectories.csv"))
-    fig, ax = plt.subplots(1, len(TRENDS), figsize=(17, 3.6))
+    cols = -(-len(trends) // rows)
+    fig, ax = plt.subplots(rows, cols, figsize=(17 if rows == 1 else 4.2 * cols, 3.6 * rows), squeeze=False)
+    ax = ax.ravel()
     print(f"maturation: {t.groupby(['plating', 'culture']).ngroups} cultures, {len(t)} culture-days")
-    for a, (col, label) in zip(ax, TRENDS):
+    for a, (col, label) in zip(ax, trends):
         for _, g in t.groupby(["plating", "culture"]):
             g = g.sort_values("div")
             a.plot(g["div"], g[col], color="0.8", lw=0.8)

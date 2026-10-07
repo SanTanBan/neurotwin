@@ -23,8 +23,8 @@
    "text": "The simulator is the chip itself: four hundred model neurons on the same sixty-electrode layout, with synaptic depression, adaptation, fast and slow synaptic currents, and noisy drive. A five-minute culture costs about ten seconds of one processor core."
   },
   {
-   "image": "docs/figures/round2_sbc.png",
-   "text": "We simulate tens of thousands of virtual cultures and train a neural posterior estimator once. Fitting a new recording then takes a fraction of a second, and its uncertainty is honest: ninety-percent intervals contain the true value eighty-eight to ninety-two percent of the time."
+   "image": "runs/nt-train3/figures/sbc.png",
+   "text": "We simulate tens of thousands of virtual cultures and train a neural posterior estimator once. Fitting a new recording then takes a fraction of a second, and its uncertainty is honest: ninety-percent intervals contain the true value eighty-six to ninety-two percent of the time."
   },
   {
    "image": "docs/figures/round1_coverage.png",
@@ -35,12 +35,12 @@
    "text": "The diagnosis was concrete. Instantaneous synapses cannot sustain a two-second burst, and bursting cultures were rare among the simulations. We gave synapses realistic time courses, and concentrated the simulations where real cultures live."
   },
   {
-   "image": "docs/figures/ppc_own_vs_mismatched.png",
-   "text": "Now each twin reproduces its own recording: eighty-seven percent of its statistics fall inside the predicted range, against forty-nine percent for the twin of a different recording. And the twin still declines most mature recordings: only eleven percent of windows pass every check, and it says which."
+   "image": "runs/figs3/ppc_own_vs_mismatched.png",
+   "text": "Now each twin reproduces its own recording: ninety-one percent of its statistics fall inside the predicted range, against fifty-two percent for the twin of a different recording. And the twin still declines most recordings: twenty-two percent of windows pass every check, and it says which."
   },
   {
-   "image": "docs/figures/maturation.png",
-   "text": "Across one hundred and thirty-four culture-days that pass every check, the twins describe maturation in mechanistic terms: within individual cultures, background drive and excitability spread rise, and spike-frequency adaptation weakens."
+   "image": "runs/figs3/maturation.png",
+   "text": "Across two hundred and eleven culture-days that pass every check, the twins describe maturation in mechanistic terms. Within individual cultures, background drive and excitability spread rise and adaptation decays faster, in two different model versions, and excitation strengthens."
   },
   {
    "image": "runs/figs/demo_top.png",
@@ -48,7 +48,15 @@
   },
   {
    "image": "docs/figures/demo_in_silico.png",
-   "text": "Halve its excitation, and bursting stops in every version of the twin, on every simulated network: a confident prediction. Halve its inhibition, and synchrony never falls and often rises, by an amount this recording cannot pin down. The twin says so, instead of guessing. Both are experiments a lab can run on the same chip."
+   "text": "Halve its excitation, and bursting stops in every version of the twin, on every simulated network: a confident prediction. Halve its inhibition, and synchrony usually rises, but by how much, and even whether, depends on what this recording cannot pin down. The twin says so, instead of guessing. Both are experiments a lab can run on the same chip."
+  },
+  {
+   "image": "docs/figures/imaging_readouts.png",
+   "text": "A label-free imaging module predicts nuclear and dead-cell stains from unstained images. Its pixels are less faithful than the published 2018 model's, yet its nuclei counts are closer to the truth, within two percent on average, and their ninety-percent intervals held in all eight test wells."
+  },
+  {
+   "image": "docs/figures/recording_length.png",
+   "text": "For oriented chips built with axon diodes, the twin asks how to read which way the axons grow. Five minutes of spontaneous activity give the right direction fifty-nine percent of the time, and forty minutes only sixty-five, with overstated confidence. The design rule: probe the direction by stimulating one chamber, rather than recording longer."
   },
   {
    "image": "runs/figs/public.png",

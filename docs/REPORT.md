@@ -468,7 +468,7 @@ adaptation increment seen in round 2 does not replicate and is not claimed.
 round-3 twin of culture 2-2 at DIV 20 from minutes 20–25 of its recording (Figure 8). By then the culture fires
 large network bursts that recruit most electrodes (synchrony 0.76); the first ten minutes of the same
 recording are much quieter, a reminder that a five-minute window is a snapshot. The amortised posterior returns
-500 draws in 0.26 s, and the window passes both checks: its distance to the nearest simulations is 0.73 against
+500 draws in under 0.3 s, and the window passes both checks: its distance to the nearest simulations is 0.73 against
 a threshold of 0.77, and 16% of the posterior mass falls outside the parameter box. Re-simulating 16 posterior
 draws, each on its own random network, places 14 of the 16 observed statistics inside the draws' 90% range. The
 two misses are network-burst duration (real bursts last longer) and the irregularity of network-burst timing.
@@ -507,9 +507,10 @@ earlier version of this experiment compared runs on different random networks, w
 intervention with network randomness; pairing the runs removed that confound.
 
 ![Figure 8](figures/demo_in_silico.png)
-*Figure 8. Worked example (culture 2-2, DIV 20, minutes 20–25; round-3 twin). Top: one minute of the recording,
-of the closest posterior draw, and of the same twin — same network, same noise — with inhibition or excitation
-halved. Bottom: each intervention's effect on synchrony across 16 posterior draws (left pair; black: the twin
+*Figure 8. Worked example (culture 2-2, DIV 20, minutes 20–25; round-3 twin). Top: the minute around the
+recording's largest network burst, and the minute around the largest burst of the closest posterior draw, shown
+also for the same twin — same network, same noise — with inhibition or excitation halved (all statistics use
+the whole five minutes). Bottom: each intervention's effect on synchrony across 16 posterior draws (left pair; black: the twin
 shown) and for the twin shown on 8 further random networks (right pair). Dashed lines: the recording.*
 
 
