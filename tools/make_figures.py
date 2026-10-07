@@ -141,7 +141,7 @@ def imaging_figure(run="runs/nt-vstain2-v2"):
     fig.tight_layout(); fig.savefig(os.path.join(FIG, "imaging_readouts.png"), dpi=110); plt.close(fig)
 
 
-def card_image(demo="docs/figures/demo_in_silico.png"):
+def card_image(demo="docs/figures/demo_in_silico.png", size=(16, 9), name="card.png"):
     """Card and thumbnail for the Kaggle writeup (1600 x 900): title on the left, a real culture and its twin
     (the first two raster columns of the worked example) on the right."""
     if not os.path.exists(demo):
@@ -149,7 +149,7 @@ def card_image(demo="docs/figures/demo_in_silico.png"):
     from PIL import Image
     im = Image.open(demo)
     rasters = im.crop((0, 0, int(im.width * 0.485), int(im.height * 0.6)))
-    fig = plt.figure(figsize=(16, 9), dpi=100)
+    fig = plt.figure(figsize=size, dpi=100)
     fig.patch.set_facecolor("white")
     fig.text(0.04, 0.70, "NeuroTwin", fontsize=64, weight="bold", color="#1a1a1a")
     fig.text(0.04, 0.58, "Calibrated digital twins of\nneural organ-on-a-chip cultures", fontsize=27,
@@ -160,7 +160,7 @@ def card_image(demo="docs/figures/demo_in_silico.png"):
              color="#777777")
     ax = fig.add_axes([0.43, 0.08, 0.55, 0.84])
     ax.imshow(rasters); ax.axis("off")
-    fig.savefig(os.path.join(FIG, "card.png"), dpi=100); plt.close(fig)
+    fig.savefig(os.path.join(FIG, name), dpi=100); plt.close(fig)
 
 
 def video_slides():
@@ -199,6 +199,7 @@ def main():
     imaging_figure()
     video_slides()
     card_image()
+    card_image(size=(16, 8), name="card_2x1.png")
     print("figures written to", FIG)
 
 
