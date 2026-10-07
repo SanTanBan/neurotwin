@@ -23,10 +23,15 @@ def main():
     spec = json.load(open(os.path.join(KIT, "scenes.json")))
     clips = []
     for sc in spec["scenes"]:
-        clip = ImageClip(os.path.join(KIT, sc["image"]), duration=sc["duration"])
-        if "audio" in sc:
-            clip = clip.with_audio(AudioFileClip(os.path.join(KIT, sc["audio"])))
-        clips.append(clip.with_duration(sc["duration"]))
+        dur = sc["duration"]
+        audio = None
+        if "audio" in sc:                     # stop just short of the audio's end (it ends in silence):
+            audio = AudioFileClip(os.path.join(KIT, sc["audio"]))      # reading exactly to the end can overrun
+            dur = min(dur, audio.duration) - 0.04
+        clip = ImageClip(os.path.join(KIT, sc["image"]), duration=dur)
+        if audio is not None:
+            clip = clip.with_audio(audio.subclipped(0, dur))
+        clips.append(clip.with_duration(dur))
     out = os.path.join(WORK, "neurotwin_demo.mp4")
     concatenate_videoclips(clips, method="compose").write_videofile(out, fps=24, codec="libx264",
                                                                     audio_codec="aac", logger=None)

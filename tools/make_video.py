@@ -91,8 +91,10 @@ def encode(kit, out_path):
             clip = CompositeVideoClip([ColorClip(SIZE, color=BG, duration=dur), inner], size=SIZE)
         else:
             clip = ImageClip(os.path.join(kit, sc["image"]), duration=dur)    # already on the 1080p canvas
-        if "audio" in sc:
-            clip = clip.with_audio(AudioFileClip(os.path.join(kit, sc["audio"])))
+        if "audio" in sc:                     # stop just short of the audio's end (it ends in silence):
+            audio = AudioFileClip(os.path.join(kit, sc["audio"]))      # reading exactly to the end can overrun
+            dur = min(dur, audio.duration) - 0.04
+            clip = clip.with_audio(audio.subclipped(0, dur))
         clips.append(clip.with_duration(dur))
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     concatenate_videoclips(clips, method="compose").write_videofile(out_path, fps=24, codec="libx264",
