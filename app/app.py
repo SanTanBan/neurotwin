@@ -26,7 +26,7 @@ from neurotwin.features import FEATURE_NAMES, compute_features  # noqa: E402
 from neurotwin.infer import sample_many, support_check  # noqa: E402
 from neurotwin.sim import ChipConfig, PARAM_NAMES, simulate  # noqa: E402
 
-ASSETS = os.environ.get("NEUROTWIN_ASSETS", "runs/nt-train2")
+ASSETS = os.environ.get("NEUROTWIN_ASSETS", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "round3"))
 WIN_S = 300.0
 CFG = ChipConfig()
 

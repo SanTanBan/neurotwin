@@ -1,6 +1,6 @@
 # NeuroTwin: calibrated digital twins of neural organ-on-a-chip cultures — technical report (draft)
 
-> Draft v0.3 (2026-10-04). Results sections are filled only with measured numbers; `[TBD]` marks pending work.
+> Version 1.0 (2026-10-07). Santanu Banerjee. Every number is produced by a public notebook (§7).
 
 ## 1. Problem definition and application scenario
 
@@ -88,8 +88,8 @@ Each electrode records the spikes of every neuron within 80 µm of its centre, w
 average, as in multi-unit recordings. The inner loop is event-driven: only the synapses of neurons that spiked
 are touched. It is compiled with numba and parallelised over cultures. A 300-s culture costs about 8–10
 CPU-core seconds: a 4-core Kaggle CPU session simulates about 1,850 cultures per hour (round 1: 81,664
-cultures in 44 session-hours), and a 4-core laptop ran the 72 simulations of the worked example (§4.3) in
-about six minutes.
+cultures in 44 session-hours), and the 72 simulations of the worked example (§4.4)
+take about three minutes on a Kaggle CPU session.
 
 The inferred parameters and their broad round-1 priors (uniform, or log-uniform where marked) are listed
 below; later rounds sample focused sub-boxes of these ranges (§4.3, §4.4).
@@ -410,20 +410,74 @@ so the trends describe the part of each culture's repertoire that the model repr
 *Figure 7. Posterior medians of reliable windows against age. Grey: individual cultures; red: median and
 interquartile range per age bin.*
 
-**A worked example and two in-silico experiments.** The `nt-demo` notebook fits the twin of culture 2-2 at
-DIV 20 from minutes 20–25 of its recording (Figure 8). By then the culture fires large network bursts that
-recruit most electrodes (synchrony 0.76); the first ten minutes of the same recording are much quieter, a
-reminder that a five-minute window is a snapshot. The amortised posterior returns 500 draws in about 0.2 s on a
-laptop CPU, and the window passes both checks: its distance to the nearest simulations is 0.78 against a
-threshold of 0.90, and 11% of the posterior mass falls outside the parameter box. Re-simulating 16 posterior
-draws, each on its own random network, places 15 of the 16 observed statistics inside the draws' 90% range.
-The one miss is network-burst duration — real bursts last longer — the gap that model v4 addresses.
+### 4.4 Round 3: model v4
 
-The draws are not equally good. Their simulated statistics lie between 0.61 and 6.0 from the recording
-(z-scored distance; median 2.25), and Figure 8 shows the closest draw. It matches the recording's synchrony
-(0.74 vs 0.76), population Fano factor (log10 2.58 vs 2.75), share of spikes in bursts (0.44 vs 0.45) and
-burst recruitment (0.43 vs 0.43), but it fires network events more often (log10 0.94 vs 0.41 per minute). On 8
-further random networks the same parameters give synchrony between 0.05 and 0.65, so part of its close match
+A local grid at the parameters closest to mature cultures showed that adding a slow excitatory current
+(fraction 0.3–0.6 of each excitatory weight, decay 80–200 ms) lengthens network bursts from 0.29 s to about
+0.9 s. It also brings single-electrode burst duration (−0.59 vs −0.52 in log10 s) and inter-burst firing
+(0.54 vs 0.50 in log10 Hz) to the real values, while keeping the population Fano factor near 3. The burst
+rise fraction stayed near 0.5 against 0.23 in real cultures, so it is excluded from inference in round 3 as a
+documented misspecified statistic. It is still checked in the posterior predictive checks.
+
+The round-3 bank holds **49,920** model-v4 cultures from three shards, in a box focused on real cultures with
+the slow current added (13 parameters: τ_syn 1–30 ms, f_slow 0–0.8, τ_slow 30–400 ms, the others as in round 2).
+The posterior was trained on 48,920 of them (60 min on a Kaggle CPU session) using the 15 remaining statistics.
+
+| | Round 2 (model v3) | Round 3 (model v4) |
+|---|---|---|
+| 90% interval coverage on held-out simulations | 0.88–0.92 | 0.86–0.92 |
+| TARP expected-coverage deviation | −0.009 | −0.008 |
+| Real windows outside the simulated support | 72.3% | **55.3%** (64.5% on all 16 statistics) |
+| Mean posterior leakage | 0.50 | **0.37** |
+| Windows passing every reliability check | 341 / 3,049 (11.2%) | **668 / 3,049 (21.9%)** |
+| Statistics inside the own twin's 90% predictive interval | 0.87 | **0.91** |
+| Same, for the twin of a different recording | 0.49 | 0.52 |
+| Median \|z\|, own vs mismatched twin | 0.41 vs 1.85 | 0.50 vs 1.74 |
+| Recordings where the own twin fits better | 15 / 16 | 13 / 16 |
+
+Round 3 doubles the share of real recordings the twin can be trusted on. Per statistic, it repairs the worst
+round-2 misfits: single-electrode burst duration now lies inside the predictive interval for 75% of the
+recordings (round 2: 19%) and the share of spikes in bursts for 88% (50%). Network-burst duration got worse
+(56%, from 81%), the burst-rise fraction that was left out of inference is still reproduced (100%), and the
+margin between a recording's own twin and another recording's twin is smaller. Identifiability is similar to
+round 2 (R²: σ 0.64, b 0.47, τ_a 0.46, u 0.40, j_e 0.29, µ 0.25, µ_sd 0.25, f_slow 0.19, τ_rec 0.11, λ 0.11,
+τ_syn 0.07, g 0.05, τ_slow 0.05); synaptic decay is less identified than in round 2 because its range is
+narrower and the slow current shares its role. All SBC rank tests pass (p ≥ 0.07). Round 3 is the model behind
+the public demo notebook.
+
+**The maturation trends replicate.** Round 3 yields 211 reliable culture-days from 25 cultures, 20 of them with
+reliable windows on at least three days. The same per-culture sign test gives:
+
+| Posterior median rising with age | Round 3 | p | Round 2 | p |
+|---|---|---|---|---|
+| Excitability spread µ_sd | 19 / 20 | 4×10⁻⁵ | 16 / 20 | 0.012 |
+| Adaptation time constant τ_a | 2 / 20 | 4×10⁻⁴ | 4 / 20 | 0.012 |
+| Excitatory efficacy j_e | 17 / 20 | 0.003 | 14 / 20 | 0.115 |
+| Background drive µ | 16 / 20 | 0.012 | 16 / 20 | 0.012 |
+| Synaptic decay τ_syn | 14 / 20 | 0.115 | 11 / 20 | 0.82 |
+| Adaptation increment b | 9 / 20 | 0.82 | 3 / 20 | 0.003 |
+| Slow-current share f_slow | 11 / 20 | 0.82 | — | — |
+| Slow-current decay τ_slow | 14 / 20 | 0.115 | — | — |
+
+Four of the eight round-3 trends survive a Benjamini–Hochberg correction at 5% and three survive Holm's.
+Rising drive, a wider spread of excitability and faster-decaying adaptation hold in two model versions with
+different synaptic mechanisms; stronger excitation becomes significant with twice the data; the smaller
+adaptation increment seen in round 2 does not replicate and is not claimed.
+
+**A worked example and two in-silico experiments.** The `nt-demo` notebook — also `python demo.py` — fits the
+round-3 twin of culture 2-2 at DIV 20 from minutes 20–25 of its recording (Figure 8). By then the culture fires
+large network bursts that recruit most electrodes (synchrony 0.76); the first ten minutes of the same
+recording are much quieter, a reminder that a five-minute window is a snapshot. The amortised posterior returns
+500 draws in 0.26 s, and the window passes both checks: its distance to the nearest simulations is 0.73 against
+a threshold of 0.77, and 16% of the posterior mass falls outside the parameter box. Re-simulating 16 posterior
+draws, each on its own random network, places 14 of the 16 observed statistics inside the draws' 90% range. The
+two misses are network-burst duration (real bursts last longer) and the irregularity of network-burst timing.
+
+The draws are not equally good. Their simulated statistics lie between 0.61 and 5.8 from the recording
+(z-scored distance; median 1.84), and Figure 8 shows the closest draw. It matches the recording's synchrony
+(0.77 vs 0.76), population Fano factor (log10 2.84 vs 2.75) and share of spikes in bursts (0.39 vs 0.45), but
+its network bursts are shorter (log10 −0.08 vs 0.28 s) and more frequent (log10 0.73 vs 0.41 per minute). On 8
+further random networks the same parameters give synchrony between 0.02 and 0.92, so part of its close match
 is the particular network it was built on: for a bursting culture, which neurons happen to connect matters as
 well as the parameters.
 
@@ -436,36 +490,28 @@ further networks).
 
 | Synchrony | Twin shown | Twin shown, 8 further networks | 16 posterior draws |
 |---|---|---|---|
-| As fitted (recording: 0.76) | 0.74 | 0.05 to 0.65 | median 0.72, 90% range 0.01 to 0.99 |
-| Inhibition halved | 0.97 | rises by 0.31 to 0.90 on all 8 | median change +0.09 (90% range 0.00 to +0.91); rises by more than 0.05 in 9, falls in none |
-| Excitation halved | 0.01 | falls to 0.01 or less on all 8 | falls to 0.02 or less in all 16 |
+| As fitted (recording: 0.76) | 0.77 | 0.02 to 0.92 | median 0.74, 90% range 0.02 to 0.96 |
+| Inhibition halved | 0.92 | rises on all 8, by 0.04 to 0.84 | median change +0.10 (90% range −0.18 to +0.95); rises by more than 0.05 in 9, falls in 1 |
+| Excitation halved | 0.00 | 0.01 or less on all 8 | 0.01 or less in all 16 |
 
-Halving excitation gives the firmer answer: network bursting stops in every draw and on every network.
-Halving inhibition never lowers synchrony. It raises it by more than 0.05 in 9 of the 16 draws; the draws
-already close to full synchrony stay there, and two silent draws stay silent. How much it rises depends on
-parameters the recording leaves undetermined, above all the inhibition ratio itself (R² 0.05 on simulations,
-against 0.32 for excitatory efficacy). The calibrated answers are therefore "silent" and "more synchronous, by an uncertain
-amount". The second points to the measurement that would sharpen it: an independent handle on inhibition, such
-as one pharmacological titration. A point-estimate twin would have given both answers with the same false
-confidence. The public recordings contain no pharmacology, so neither prediction is validated here; both can be
-tested on the same chip. An earlier version of this experiment compared runs on different random networks,
-which conflates the intervention with network randomness; pairing the runs removed that confound.
+Halving excitation gives the firm answer: network bursting stops in every draw and on every network. Halving
+inhibition raises synchrony by more than 0.05 in 9 of the 16 draws and on all 8 networks of the twin shown; of
+the other draws, four were already above 0.9, two silent ones stay silent, and one bursting draw falls silent
+instead. How the culture responds depends on parameters the recording leaves undetermined, above all the
+inhibition ratio itself (R² 0.05 on simulations, against 0.29 for excitatory efficacy). The calibrated answers
+are therefore "silent" and "probably more synchronous, by an uncertain amount". The second points to the
+measurement that would sharpen it: an independent handle on inhibition, such as one pharmacological titration.
+A point-estimate twin would have given both answers with the same false confidence. The public recordings
+contain no pharmacology, so neither prediction is validated here; both can be tested on the same chip. An
+earlier version of this experiment compared runs on different random networks, which conflates the
+intervention with network randomness; pairing the runs removed that confound.
 
 ![Figure 8](figures/demo_in_silico.png)
-*Figure 8. Worked example (culture 2-2, DIV 20, minutes 20–25). Top: one minute of the recording, of the
-closest posterior draw, and of the same twin — same network, same noise — with inhibition or excitation
+*Figure 8. Worked example (culture 2-2, DIV 20, minutes 20–25; round-3 twin). Top: one minute of the recording,
+of the closest posterior draw, and of the same twin — same network, same noise — with inhibition or excitation
 halved. Bottom: each intervention's effect on synchrony across 16 posterior draws (left pair; black: the twin
 shown) and for the twin shown on 8 further random networks (right pair). Dashed lines: the recording.*
 
-### 4.4 Round 3: model v4
-
-A local grid at the parameters closest to mature cultures showed that adding a slow excitatory current
-(fraction 0.3–0.6 of each excitatory weight, decay 80–200 ms) lengthens network bursts from 0.29 s to about
-0.9 s. It also brings single-electrode burst duration (−0.59 vs −0.52 in log10 s) and inter-burst firing
-(0.54 vs 0.50 in log10 Hz) to the real values, while keeping the population Fano factor near 3. The burst
-rise fraction stayed near 0.5 against 0.23 in real cultures, so it is excluded from inference in round 3 as a
-documented misspecified statistic. It is still checked in the posterior predictive checks. A 3-shard bank of
-model-v4 cultures and the round-3 posterior are in progress. [TBD: round-3 results.]
 
 ### 4.5 Oriented-circuit twin: reading the wiring direction
 
@@ -490,9 +536,37 @@ the 90% interval for p_fwd against the strength of the stronger direction.*
 
 This result is weak, and we say so. It is consistent with the earlier ground-truth test, in which the
 onset lag recovered the direction cleanly for strong diodes (+34 ± 24 ms versus −40 ± 35 ms) but was noisy in
-general. Crossings are sparse (k_cross = 4) and five minutes contain few chamber-spanning events. The design
-question this raises — how long must a chip be recorded to read its direction reliably — is the next
-experiment. [TBD: recording-length study.]
+general. Crossings are sparse (k_cross = 4) and five minutes contain few chamber-spanning events.
+
+**How long must a chip be recorded?** The `nt-design2c` notebook simulated 240 further chips for 40 minutes
+each (237 usable; 3 ran away), fitted every 5-minute window with the two-chamber posterior, and pooled the
+windows of each chip as independent evidence: with a uniform prior on the crossing probabilities, the pooled
+posterior over (p_fwd, p_bwd) is the product of the windows' kernel density estimates.
+
+| Recording length | 5 min | 10 min | 20 min | 40 min |
+|---|---|---|---|---|
+| Direction read correctly, all 237 chips | 59.1% | 62.9% | 63.3% | 65.4% |
+| Same, engineered asymmetry > 0.3 (116 chips) | 61.2% | 64.7% | 66.4% | 69.0% |
+| Median width of the 90% interval for p_fwd | 0.85 | 0.77 | 0.65 | 0.50 |
+| Chips called with ≥ 90% confidence | 5.9% | 11.0% | 21.5% | 32.1% |
+| ... of which correct | 12 / 14 | 23 / 26 | 42 / 51 | 58 / 76 |
+
+Recording longer helps, but much less than the shrinking intervals suggest. Eight times more recording lifts
+the correct direction from 59% to 65% (61% to 69% for strongly asymmetric chips) while the pooled interval
+narrows by about 40%, and the pooled confidence becomes overstated: calls made with at least 90% confidence are right
+in 12 of 14 chips at 5 minutes but in only 58 of 76 at 40 minutes (Figure 10, right). Multiplying window
+posteriors treats the windows as independent although they share the culture's other parameters, and that
+error compounds with every window. Two conclusions for chip design follow. Spontaneous activity carries little
+information about wiring direction, so the readout should come from an experiment that probes it — for
+example, stimulating one chamber while recording the other — and the twin can compare such protocols before
+anyone builds them. And long recordings must be combined by a posterior trained on long recordings, or by a
+hierarchical model of the shared parameters, rather than by multiplying window posteriors.
+
+![Figure 10](figures/recording_length.png)
+*Figure 10. Recording length and the wiring direction (237 simulated two-chamber chips). Left: share of chips
+whose direction is read correctly, with 95% binomial intervals. Middle: median width of the pooled 90%
+intervals. Right: stated probability of the direction against the observed share correct; points below the
+diagonal are overconfident.*
 
 ### 4.6 Label-free imaging
 
@@ -515,8 +589,33 @@ validation wells). Mixed-precision training made one ensemble member diverge (Na
 the corrupted ensemble lowered pixel correlation (0.71 / 0.29). Even so, the nuclei count reached **8.1%**
 error with the default readout, and the validation-derived intervals contained the true count in **7 of 8**
 test wells. The calibrated readout did worse (18.4%), because its joint objective was dominated by the
-collapsed dead-cell channel. A corrected run is pending: full precision, gradient clipping, diverged members
-dropped, and counts and dead fraction calibrated separately. [TBD: corrected results.]
+collapsed dead-cell channel.
+
+**Corrected run** (full precision, gradient clipping, diverged members dropped, counts and dead fraction
+calibrated separately; 141 min on one GPU). All three ensemble members trained cleanly (best validation
+negative log-likelihoods −2.68, −2.71 and −2.59).
+
+| 8 official test wells | NeuroTwin | Published in-silico-labeling model |
+|---|---|---|
+| Pixel Pearson r, nuclei (DAPI) | 0.77 | 0.92 |
+| Pixel Pearson r, dead cells (PI) | 0.74 | 0.85 |
+| Nuclei count, mean absolute error | **1.8%** (default readout: 6.6%) | 4.8% |
+| Dead-cell fraction, mean absolute error | 0.014 | 0.011 |
+| 90% interval contains the true count | **8 of 8 wells** | — |
+| 90% interval contains the true dead fraction | 7 of 8 wells | — |
+| Pixel-level 90% coverage, DAPI / PI | 0.84 / 0.97 | — |
+
+The pixels remain less faithful than the published model's, but the readouts an experimenter uses are as
+accurate — nuclei counts better, dead fraction slightly worse — and they come with intervals that hold on
+unseen wells (Figure 11). One asymmetry in the comparison should be stated: our readout settings were tuned on
+our own validation wells, while the published model's images are read with the default settings, because its
+predictions exist only for the test wells; with the default readout our count error is 6.6%.
+
+![Figure 11](figures/imaging_readouts.png)
+*Figure 11. Label-free readouts on the 8 official test wells. Left and middle: nuclei count and dead-cell
+fraction from the real stains (black), from NeuroTwin's predicted stains with 90% intervals (red) and from the
+published model's predicted stains (grey). Right: per-well pixel correlation, NeuroTwin against the published
+model.*
 
 ## 5. Reliability analysis and limitations
 
@@ -558,7 +657,7 @@ say "I do not know" is worse than no twin.
   widens the posterior; this is visible in the reported uncertainty rather than hidden.
 - *Amortised posteriors are calibrated on average, not for each recording.* Coverage, SBC and TARP average
   over simulated data. For a single recording the posterior can be broader than the data warrant: in the
-  worked example, the re-simulated draws lie between 0.61 and 6.0 from the recording, and only some of them
+  worked example, the re-simulated draws lie between 0.61 and 5.8 from the recording, and only some of them
   look like it. A short
   per-recording refinement — a truncated sequential round started from the amortised posterior (Deistler et
   al., 2022) — would sharpen such twins at a cost of minutes rather than milliseconds.
@@ -604,11 +703,15 @@ notebook has no private dependencies). All of them run on ordinary CPU sessions;
 | 1 | `nt-realdata` | downloads 527 recordings from the Potter-lab archive | `wagenaar_dense_features.csv` (3,049 windows) | ~9 min |
 | 2 | `nt-simbank2/shards/s*` | none | round-2 bank `bank2_shard*.npz` (model v3, focused prior) | 11 h per shard |
 | 3 | `nt-train2` | steps 1–2 | `posterior.pt`, `calibration.json`, `real_posteriors.csv`, `ppc*.csv`, `twin_assets.npz`, figures | ~1–2 h |
-| 4 | `nt-demo` | steps 1, 3 | one worked example: fit, reliability verdict, predictive check, two in-silico experiments | ~10 min |
+| 4 | `nt-demo` | steps 1, 10 | one worked example: fit, reliability verdict, predictive check, two in-silico experiments | ~10 min |
 | 5 | `nt-isldata` | downloads the in-silico-labeling rat cortical wells | 81 wells (73 train / 8 test) as compact arrays | ~4 min |
 | 6 | `nt-vstain` | step 5 | virtual-staining ensemble, test metrics against the published baseline, figures | ~1–2 h CPU |
 | 7 | `nt-simbank2c` | none | two-chamber bank with directional statistics | 11 h |
 | 8 | `nt-train2c` | step 7 | posterior over crossing probabilities, design map | ~1 h |
+| 9 | `nt-simbank3-s0..s2` | none | round-3 bank `bank3_shard*.npz` (model v4) | 11 h per shard |
+| 10 | `nt-train3` | steps 1, 9 | round-3 posterior and diagnostics, whole-bank `twin_assets.npz` | ~2 h |
+| 11 | `nt-design2c` | steps 7, 8 | recording-length study (`design_length*.csv`, Figure 10) | ~50 min |
+| 12 | `nt-isldata2`, `nt-vstain2` | downloads the wells | 13-plane imaging data; GPU ensemble, readouts with intervals (Figure 11) | ~2.5 h GPU |
 
 Locally:
 
@@ -633,7 +736,8 @@ exactly at their neutral settings (§3.1).
 
 ## 8. Team
 
-[TBD — to be confirmed by the team, including disciplinary backgrounds.]
+Santanu Banerjee (team leader and sole member): Master of Science (by Research) in Operations Research,
+Indian Institute of Technology Kharagpur, India. Background in quantitative modelling, optimisation and AI.
 
 ## 9. External resources and AI tools
 

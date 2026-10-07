@@ -108,6 +108,59 @@ def slide(name, title, lines):
     fig.savefig(os.path.join(FIG, name), dpi=120); plt.close(fig)
 
 
+def imaging_figure(run="runs/nt-vstain2-v2"):
+    """Readouts on the 8 test wells: nuclei count and dead fraction with our 90% intervals, against the truth and
+    the published in-silico-labeling model, plus per-well pixel correlation."""
+    path = os.path.join(run, "vstain2_test_metrics.csv")
+    if not os.path.exists(path):
+        return
+    d = pd.read_csv(path)
+    x = np.arange(len(d))
+    fig, ax = plt.subplots(1, 3, figsize=(16, 4.4))
+    for a, (true, ours, lo, hi, isl, lab) in zip(ax[:2], [
+            ("count_true", "count_ours", "count_lo", "count_hi", "count_isl", "nuclei per well"),
+            ("dead_true", "dead_ours", "dead_lo", "dead_hi", "dead_isl", "dead-cell fraction")]):
+        a.errorbar(x - 0.15, d[ours], yerr=[d[ours] - d[lo], d[hi] - d[ours]], fmt="o", color="C3", capsize=3,
+                   label="NeuroTwin, with 90% interval")
+        a.scatter(x + 0.15, d[isl], color="0.55", marker="s", label="published model (2018)", zorder=3)
+        a.scatter(x, d[true], color="k", marker="_", s=300, label="real stain", zorder=4)
+        a.set_xticks(x); a.set_xticklabels([k.split("_")[-1] for k in d["key"]]); a.set_xlabel("test well")
+        a.set_ylabel(lab); a.legend(frameon=False, fontsize=9)
+    err = lambda col: (d[col] - d.count_true).abs().div(d.count_true).mean()  # noqa: E731
+    ax[0].set_title(f"Nuclei count: mean error {err('count_ours'):.1%} (published {err('count_isl'):.1%})")
+    ax[1].set_title(f"Dead-cell fraction: mean error {(d.dead_ours - d.dead_true).abs().mean():.3f} "
+                    f"(published {(d.dead_isl - d.dead_true).abs().mean():.3f})")
+    for col, lab, c in (("dapi", "nuclei (DAPI)", "C0"), ("dead", "dead cells (PI)", "C1")):
+        ax[2].scatter(d[f"{col}_r_isl"], d[f"{col}_r_ours"], color=c, label=lab)
+    ax[2].plot([0.6, 1], [0.6, 1], "k--", lw=0.8)
+    ax[2].set_xlim(0.6, 1); ax[2].set_ylim(0.6, 1)
+    ax[2].set_xlabel("pixel correlation, published model"); ax[2].set_ylabel("pixel correlation, NeuroTwin")
+    ax[2].set_title("Pixel fidelity: below the published model"); ax[2].legend(frameon=False)
+    fig.tight_layout(); fig.savefig(os.path.join(FIG, "imaging_readouts.png"), dpi=110); plt.close(fig)
+
+
+def card_image(demo="docs/figures/demo_in_silico.png"):
+    """Card and thumbnail for the Kaggle writeup (1600 x 900): title on the left, a real culture and its twin
+    (the first two raster columns of the worked example) on the right."""
+    if not os.path.exists(demo):
+        return
+    from PIL import Image
+    im = Image.open(demo)
+    rasters = im.crop((0, 0, int(im.width * 0.485), int(im.height * 0.6)))
+    fig = plt.figure(figsize=(16, 9), dpi=100)
+    fig.patch.set_facecolor("white")
+    fig.text(0.04, 0.70, "NeuroTwin", fontsize=64, weight="bold", color="#1a1a1a")
+    fig.text(0.04, 0.58, "Calibrated digital twins of\nneural organ-on-a-chip cultures", fontsize=27,
+             color="#333333", va="top", linespacing=1.3)
+    fig.text(0.04, 0.33, "recording in  →  mechanistic twin out\nwith checks that say when to trust it",
+             fontsize=19, color="#555555", va="top", linespacing=1.4)
+    fig.text(0.04, 0.10, "End-to-End System  ·  AI4S Open Innovation: AI for Life Science", fontsize=15,
+             color="#777777")
+    ax = fig.add_axes([0.43, 0.08, 0.55, 0.84])
+    ax.imshow(rasters); ax.axis("off")
+    fig.savefig(os.path.join(FIG, "card.png"), dpi=100); plt.close(fig)
+
+
 def video_slides():
     """Text slides for the video, and the top (raster) half of the worked-example figure."""
     slide("simulator.png", "The chip simulator", ["400 model neurons on the real 60-electrode layout",
@@ -141,7 +194,9 @@ def main():
                                      "AI4S Open Innovation: AI for Life Science  |  End-to-End System"])
     slide("closing.png", "From description to prediction", ["for neural organs-on-chips, with uncertainty you can check",
                                                              "code and notebooks: github.com/SanTanBan/neurotwin"])
+    imaging_figure()
     video_slides()
+    card_image()
     print("figures written to", FIG)
 
 

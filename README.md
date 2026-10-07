@@ -36,15 +36,31 @@ flowchart LR
 | `tools/` | Kaggle helpers (`kgl.py`, `chain.py`, `make_shards.py`), video pipeline (`make_video.py`, `tts.ps1`) |
 | `docs/` | Technical report, writeup draft, video script |
 
-## Reproduce
-
-Everything runs on CPU (the imaging module optionally uses a GPU).
+## Quick start
 
 ```bash
 pip install -r requirements.txt
+python demo.py
+```
+
+`demo.py` is the entry script. It fits the twin of culture 2-2 at 20 days in vitro (minutes 20–25 of its
+recording, downloaded from the public archive on first use) with the round-3 posterior shipped in
+`assets/round3/`, states whether the fit can be trusted, re-simulates 16 posterior draws as a predictive check,
+and runs two in-silico experiments (inhibition or excitation halved). It takes about 10 minutes on a 4-core
+CPU and writes `demo_rasters.png`, `demo_comparison.csv` and `demo_draws.csv` to `runs/demo/`. Other
+recordings: `python demo.py --recording 2-2-14 --start 0`, or your own two-column spike file with `--file`.
+The same script runs as the Kaggle notebook `nt-demo`. For the interactive app, `pip install gradio` and run
+`python app/app.py`.
+
+## Reproduce everything
+
+Everything runs on free Kaggle CPU sessions except the imaging ensemble (one GPU session). Each notebook is a
+single script built from its template, pushed, run and fetched with the helpers in `tools/`:
+
+```bash
 python tools/build_kernel.py kaggle/nt-train3/template.py kaggle/nt-train3/nt_train3.py
 python tools/kgl.py run kaggle/nt-train3        # push to Kaggle, wait, fetch outputs
-python app/app.py                               # interactive demo, reads a training run's outputs
+python tools/report_pdf.py                      # docs/REPORT.md -> docs/NeuroTwin_report.pdf
 ```
 
 The notebook chain (each a single script built from `kaggle/<name>/template.py`):
@@ -55,7 +71,8 @@ The notebook chain (each a single script built from `kaggle/<name>/template.py`)
 | Simulation banks | `nt-simbank*`, `nt-simbank2c` | virtual cultures for each round, and two-chamber chips |
 | Inference | `nt-train*`, `nt-train2c` | posterior, calibration, real-data fits, predictive checks |
 | Imaging | `nt-isldata2`, `nt-vstain2` | virtual-staining ensemble and test-well evaluation |
-| Demo | `nt-demo` | one recording fitted end to end, with an in-silico experiment |
+| Design study | `nt-design2c` | how recording length limits reading a two-chamber chip's wiring direction |
+| Demo | `nt-demo` | one recording fitted end to end, with a predictive check and two in-silico experiments |
 
 ## Data and licences
 

@@ -16,3 +16,6 @@ video/build/
 .env
 kaggle/*/shards/
 sbi-logs/
+
+# the round-3 posterior used by demo.py and the app (small, versioned on purpose)
+!assets/round3/posterior.pt

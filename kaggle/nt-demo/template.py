@@ -30,8 +30,9 @@ ON_KAGGLE = os.name != "nt" and os.path.isdir("/kaggle/working")   # a local D:\
 WORK = "/kaggle/working" if ON_KAGGLE else "."
 INPUT = "/kaggle/input" if ON_KAGGLE else "."
 WIN_S = 300.0
-RECORDING = "2-2-20"          # culture 2-2 at 20 days in vitro
-START_S = 1200.0              # its fifth 300-s window: the culture bursts, and the window passes every check
+RECORDING = os.environ.get("NT_RECORDING", "2-2-20")   # culture 2-2 at 20 days in vitro
+START_S = float(os.environ.get("NT_START_S", 1200))    # its fifth 300-s window: the culture bursts, and the
+                                                       # window passes every check
 N_POST = 500
 N_DRAWS = 16                  # posterior draws re-simulated for the predictive check and the experiments
 N_NETS = 8                    # further random networks for the twin shown in the figure
@@ -67,13 +68,20 @@ def apply_box(box):
 
 
 def raster(ax, ax_rate, e, t, t0, t1, title, color="k"):
-    """Raster plus population rate (50-ms bins), so network bursts stand out."""
+    """Raster plus population rate (50-ms bins) between t0 and t1 (s in the fitted window)."""
     m = (t >= t0) & (t < t1)
-    ax.scatter(t[m] - t0, e[m], s=0.3, c=color)
+    ax.scatter(t[m], e[m], s=0.3, c=color)
     ax.set_title(title, fontsize=11); ax.set_ylabel("electrode"); ax.tick_params(labelbottom=False)
-    h, edges = np.histogram(t[m] - t0, bins=np.arange(0, t1 - t0 + 1e-9, 0.05))
+    h, edges = np.histogram(t[m], bins=np.arange(t0, t1 + 1e-9, 0.05))
     ax_rate.plot(edges[:-1], h / 0.05, color=color, lw=0.7)
-    ax_rate.set_xlabel("time (s)"); ax_rate.set_ylabel("spikes/s")
+    ax_rate.set_xlabel("time in the fitted window (s)"); ax_rate.set_ylabel("spikes/s")
+
+
+def burst_view(t, span=60.0):
+    """Start of the span-s view centred on the largest 50-ms population-rate peak (display only; every statistic
+    uses the whole window)."""
+    h, edges = np.histogram(t, bins=np.arange(0, WIN_S + 1e-9, 0.05))
+    return float(np.clip(edges[int(np.argmax(h))] - span / 2, 0, WIN_S - span))
 
 
 def paired(ax, x0, before, after, color):
@@ -168,12 +176,14 @@ def main():
     outer = fig.add_gridspec(2, 1, height_ratios=[4, 2.6], hspace=0.28)
     top = outer[0].subgridspec(2, 4, height_ratios=[3, 1], hspace=0.08, wspace=0.25)
     bottom = outer[1].subgridspec(1, 2, wspace=0.15)
-    panels = [(e_obs, t_obs, f"real culture {RECORDING}, minutes {START_S / 60:.0f}-{START_S / 60 + 1:.0f}", "k"),
-              (*sims["as fitted"][j], "its digital twin (the closest posterior draw)", "C3")]
-    panels += [(*sims[name][j], f"the same twin, {name} (in silico)", c) for name, _, _, c in EXPERIMENTS]
-    for i, (e, tt, title, color) in enumerate(panels):
+    # each view is the minute around the largest burst: the recording's own, and the twin's for all its arms
+    v_real, v_twin = burst_view(t_obs), burst_view(sims["as fitted"][j][1])
+    panels = [(e_obs, t_obs, v_real, f"real culture {RECORDING} (window starts at {START_S / 60:.0f} min)", "k"),
+              (*sims["as fitted"][j], v_twin, "its digital twin (the closest posterior draw)", "C3")]
+    panels += [(*sims[name][j], v_twin, f"the same twin, {name} (in silico)", c) for name, _, _, c in EXPERIMENTS]
+    for i, (e, tt, v0, title, color) in enumerate(panels):
         a = fig.add_subplot(top[0, i])
-        raster(a, fig.add_subplot(top[1, i], sharex=a), e, tt, 0, 60, title, color)
+        raster(a, fig.add_subplot(top[1, i], sharex=a), e, tt, v0, v0 + 60, title, color)
     for i, (name, _, _, c) in enumerate(EXPERIMENTS):
         a = fig.add_subplot(bottom[0, i])
         paired(a, 0, xb[:, k], feats[name][:, k], c)
