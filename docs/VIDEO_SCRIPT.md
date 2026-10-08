@@ -1,6 +1,6 @@
 # Demo video script (target about 4:30, hard limit 5:00)
 
-Narration is synthesised locally by `tools/make_video.py` (Windows speech, voice "Microsoft Zira Desktop"); each scene
+Narration is synthesised locally by `tools/make_video.py` (Windows OneCore speech, Indian-English female voice "Microsoft Heera", rate 1.15; captions and chapters are written alongside); each scene
 lasts as long as its narration plus 0.6 s. Every number below is taken from docs/REPORT.md (final model = round 3
 unless a scene says otherwise). Visuals are report figures (`docs/figures/`), round-3 figures (`runs/figs3/`,
 `runs/nt-train3/figures/`) and slides made by `tools/make_figures.py` (`runs/figs/`). The scene list itself is

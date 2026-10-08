@@ -1,0 +1,219 @@
+1
+00:00:03,000 --> 00:00:09,729
+This is a living neural circuit on a chip: rat cortical
+neurons growing over sixty electrodes.
+
+2
+00:00:09,979 --> 00:00:12,018
+Every dot is a spike.
+
+3
+00:00:12,268 --> 00:00:16,676
+Every couple of minutes, the whole network fires at once.
+
+4
+00:00:17,236 --> 00:00:24,780
+Labs summarise recordings like these with firing rates,
+burst counts and synchrony, and watch them change as
+
+5
+00:00:24,780 --> 00:00:25,898
+cultures mature.
+
+6
+00:00:26,148 --> 00:00:28,366
+These numbers describe.
+
+7
+00:00:28,616 --> 00:00:36,596
+They cannot say why a network bursts, how sure we should be,
+or what it would do under a change nobody has tried.
+
+8
+00:00:37,156 --> 00:00:44,594
+NeuroTwin turns a recording into a mechanistic digital twin:
+a simulated culture on the same chip, whose biophysical
+
+9
+00:00:44,594 --> 00:00:51,262
+parameters are inferred from that recording, together with
+checks that say when the twin can be trusted.
+
+10
+00:00:51,822 --> 00:00:59,994
+The simulator is the chip itself: four hundred model neurons
+on the same sixty-electrode layout, with synaptic
+
+11
+00:00:59,994 --> 00:01:05,418
+depression, adaptation, fast and slow synaptic currents, and
+noisy drive.
+
+12
+00:01:05,668 --> 00:01:10,335
+A five-minute culture costs about ten seconds of one
+processor core.
+
+13
+00:01:10,895 --> 00:01:17,601
+We simulate tens of thousands of virtual cultures and train
+a neural posterior estimator once.
+
+14
+00:01:17,851 --> 00:01:25,303
+Fitting a new recording then takes a fraction of a second,
+and its uncertainty is honest: ninety-percent intervals
+
+15
+00:01:25,303 --> 00:01:29,748
+contain the true value eighty-six to ninety-two percent of
+the time.
+
+16
+00:01:30,308 --> 00:01:34,093
+Our first round failed, and the system said so.
+
+17
+00:01:34,343 --> 00:01:42,149
+Three in four real recording windows lay outside anything
+the simulator could produce, and the twin flagged its own
+
+18
+00:01:42,149 --> 00:01:43,642
+fits as extrapolation.
+
+19
+00:01:43,892 --> 00:01:47,917
+A confident wrong answer is the real danger in this field.
+
+20
+00:01:48,477 --> 00:01:51,001
+The diagnosis was concrete.
+
+21
+00:01:51,251 --> 00:01:58,787
+Instantaneous synapses cannot sustain a two-second burst,
+and bursting cultures were rare among the simulations.
+
+22
+00:01:59,037 --> 00:02:05,960
+We gave synapses realistic time courses, and concentrated
+the simulations where real cultures live.
+
+23
+00:02:06,520 --> 00:02:14,040
+Now each twin reproduces its own recording: ninety-one
+percent of its statistics fall inside the predicted range,
+
+24
+00:02:14,040 --> 00:02:18,298
+against fifty-two percent for the twin of a different
+recording.
+
+25
+00:02:18,548 --> 00:02:26,307
+And the twin still declines most recordings: twenty-two
+percent of windows pass every check, and it says which.
+
+26
+00:02:26,867 --> 00:02:34,795
+Across two hundred and eleven culture-days that pass every
+check, the twins describe maturation in mechanistic terms.
+
+27
+00:02:35,045 --> 00:02:42,628
+Within individual cultures, background drive and
+excitability spread rise and adaptation decays faster, in
+
+28
+00:02:42,628 --> 00:02:46,705
+two different model versions, and excitation strengthens.
+
+29
+00:02:47,265 --> 00:02:53,055
+Here is one culture's twin, fitted to minutes twenty to
+twenty-five of its recording.
+
+30
+00:02:53,305 --> 00:02:58,054
+Like the culture, it fires large, network-wide bursts.
+
+31
+00:02:58,304 --> 00:03:04,422
+Because the twin is mechanistic, we can ask it questions the
+experiment never asked.
+
+32
+00:03:04,982 --> 00:03:13,019
+Halve its excitation, and bursting stops in every version of
+the twin, on every simulated network: a confident
+
+33
+00:03:13,019 --> 00:03:13,822
+prediction.
+
+34
+00:03:14,072 --> 00:03:22,595
+Halve its inhibition, and synchrony usually rises, but by
+how much, and even whether, depends on what this recording
+
+35
+00:03:22,595 --> 00:03:23,771
+cannot pin down.
+
+36
+00:03:24,021 --> 00:03:27,177
+The twin says so, instead of guessing.
+
+37
+00:03:27,427 --> 00:03:31,316
+Both are experiments a lab can run on the same chip.
+
+38
+00:03:31,876 --> 00:03:37,812
+A label-free imaging module predicts nuclear and dead-cell
+stains from unstained images.
+
+39
+00:03:38,062 --> 00:03:45,755
+Its pixels are less faithful than the published 2018
+model's, yet its nuclei counts are closer to the truth,
+
+40
+00:03:45,755 --> 00:03:52,521
+within two percent on average, and their ninety-percent
+intervals held in all eight test wells.
+
+41
+00:03:53,081 --> 00:03:59,985
+For oriented chips built with axon diodes, the twin asks how
+to read which way the axons grow.
+
+42
+00:04:00,235 --> 00:04:07,917
+Five minutes of spontaneous activity give the right
+direction fifty-nine percent of the time, and forty minutes
+
+43
+00:04:07,917 --> 00:04:10,962
+only sixty-five, with overstated confidence.
+
+44
+00:04:11,212 --> 00:04:17,972
+The design rule: probe the direction by stimulating one
+chamber, rather than recording longer.
+
+45
+00:04:18,532 --> 00:04:26,689
+Everything is public and runs on ordinary computers: the
+data, the notebooks that reproduce every number, and an app
+
+46
+00:04:26,689 --> 00:04:29,431
+that fits a twin to your own recording.
+
+47
+00:04:29,991 --> 00:04:37,093
+NeuroTwin: from description to prediction for neural
+organs-on-chips, with uncertainty you can check.
+

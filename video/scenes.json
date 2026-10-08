@@ -1,10 +1,12 @@
 {
- "voice": "Microsoft Zira Desktop",
- "rate": 0,
+ "engine": "onecore",
+ "voice": "Microsoft Heera",
+ "rate": 1.15,
  "scenes": [
   {
    "image": "runs/figs/title.png",
-   "duration": 3.0
+   "duration": 3.0,
+   "chapter": "Introduction: a neural circuit on a chip"
   },
   {
    "image": "runs/figs/real_2-2-20.png",
@@ -16,7 +18,8 @@
   },
   {
    "image": "docs/figures/architecture.png",
-   "text": "NeuroTwin turns a recording into a mechanistic digital twin: a simulated culture on the same chip, whose biophysical parameters are inferred from that recording, together with checks that say when the twin can be trusted."
+   "text": "NeuroTwin turns a recording into a mechanistic digital twin: a simulated culture on the same chip, whose biophysical parameters are inferred from that recording, together with checks that say when the twin can be trusted.",
+   "chapter": "How NeuroTwin works"
   },
   {
    "image": "runs/figs/simulator.png",
@@ -28,7 +31,8 @@
   },
   {
    "image": "docs/figures/round1_coverage.png",
-   "text": "Our first round failed, and the system said so. Three in four real recording windows lay outside anything the simulator could produce, and the twin flagged its own fits as extrapolation. A confident wrong answer is the real danger in this field."
+   "text": "Our first round failed, and the system said so. Three in four real recording windows lay outside anything the simulator could produce, and the twin flagged its own fits as extrapolation. A confident wrong answer is the real danger in this field.",
+   "chapter": "A failure the system caught, and the fix"
   },
   {
    "image": "runs/figs/diagnosis.png",
@@ -36,15 +40,18 @@
   },
   {
    "image": "runs/figs3/ppc_own_vs_mismatched.png",
-   "text": "Now each twin reproduces its own recording: ninety-one percent of its statistics fall inside the predicted range, against fifty-two percent for the twin of a different recording. And the twin still declines most recordings: twenty-two percent of windows pass every check, and it says which."
+   "text": "Now each twin reproduces its own recording: ninety-one percent of its statistics fall inside the predicted range, against fifty-two percent for the twin of a different recording. And the twin still declines most recordings: twenty-two percent of windows pass every check, and it says which.",
+   "chapter": "Results: twins that fit their own recording"
   },
   {
    "image": "runs/figs3/maturation.png",
-   "text": "Across two hundred and eleven culture-days that pass every check, the twins describe maturation in mechanistic terms. Within individual cultures, background drive and excitability spread rise and adaptation decays faster, in two different model versions, and excitation strengthens."
+   "text": "Across two hundred and eleven culture-days that pass every check, the twins describe maturation in mechanistic terms. Within individual cultures, background drive and excitability spread rise and adaptation decays faster, in two different model versions, and excitation strengthens.",
+   "chapter": "Maturation in mechanistic terms"
   },
   {
    "image": "runs/figs/demo_top.png",
-   "text": "Here is one culture's twin, fitted to minutes twenty to twenty-five of its recording. Like the culture, it fires large, network-wide bursts. Because the twin is mechanistic, we can ask it questions the experiment never asked."
+   "text": "Here is one culture's twin, fitted to minutes twenty to twenty-five of its recording. Like the culture, it fires large, network-wide bursts. Because the twin is mechanistic, we can ask it questions the experiment never asked.",
+   "chapter": "Worked example and in-silico experiments"
   },
   {
    "image": "docs/figures/demo_in_silico.png",
@@ -52,15 +59,18 @@
   },
   {
    "image": "docs/figures/imaging_readouts.png",
-   "text": "A label-free imaging module predicts nuclear and dead-cell stains from unstained images. Its pixels are less faithful than the published 2018 model's, yet its nuclei counts are closer to the truth, within two percent on average, and their ninety-percent intervals held in all eight test wells."
+   "text": "A label-free imaging module predicts nuclear and dead-cell stains from unstained images. Its pixels are less faithful than the published 2018 model's, yet its nuclei counts are closer to the truth, within two percent on average, and their ninety-percent intervals held in all eight test wells.",
+   "chapter": "Label-free imaging"
   },
   {
    "image": "docs/figures/recording_length.png",
-   "text": "For oriented chips built with axon diodes, the twin asks how to read which way the axons grow. Five minutes of spontaneous activity give the right direction fifty-nine percent of the time, and forty minutes only sixty-five, with overstated confidence. The design rule: probe the direction by stimulating one chamber, rather than recording longer."
+   "text": "For oriented chips built with axon diodes, the twin asks how to read which way the axons grow. Five minutes of spontaneous activity give the right direction fifty-nine percent of the time, and forty minutes only sixty-five, with overstated confidence. The design rule: probe the direction by stimulating one chamber, rather than recording longer.",
+   "chapter": "Axon-diode chips: a design rule"
   },
   {
    "image": "runs/figs/public.png",
-   "text": "Everything is public and runs on ordinary computers: the data, the notebooks that reproduce every number, and an app that fits a twin to your own recording."
+   "text": "Everything is public and runs on ordinary computers: the data, the notebooks that reproduce every number, and an app that fits a twin to your own recording.",
+   "chapter": "Open code and summary"
   },
   {
    "image": "runs/figs/closing.png",

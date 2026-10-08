@@ -27,7 +27,7 @@ def main():
         audio = None
         if "audio" in sc:                     # stop just short of the audio's end (it ends in silence):
             audio = AudioFileClip(os.path.join(KIT, sc["audio"]))      # reading exactly to the end can overrun
-            dur = min(dur, audio.duration) - 0.04
+            dur = min(dur, audio.duration - 0.04)    # prepare already shortened it
         clip = ImageClip(os.path.join(KIT, sc["image"]), duration=dur)
         if audio is not None:
             clip = clip.with_audio(audio.subclipped(0, dur))

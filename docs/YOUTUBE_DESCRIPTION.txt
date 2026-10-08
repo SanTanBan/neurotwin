@@ -1,0 +1,30 @@
+NeuroTwin: calibrated digital twins of neural organ-on-a-chip cultures
+
+NeuroTwin turns a microelectrode-array recording of a neural chip into a mechanistic digital twin of that chip: a simulated culture whose biophysical parameters are inferred from the recording with amortised simulation-based inference, together with checks that say when the twin can be trusted. Run forward, the twin answers questions the experiment never asked, and says which answers are firm.
+
+Entry to the Kaggle hackathon "AI4S Open Innovation: AI for Life Science" (End-to-End System category).
+
+Chapters
+0:00 Introduction: a neural circuit on a chip
+0:37 How NeuroTwin works
+1:30 A failure the system caught, and the fix
+2:06 Results: twins that fit their own recording
+2:26 Maturation in mechanistic terms
+2:47 Worked example and in-silico experiments
+3:31 Label-free imaging
+3:53 Axon-diode chips: a design rule
+4:18 Open code and summary
+
+Key results (public data)
+• Calibrated uncertainty: 90% intervals cover 86–92% of true values on held-out simulations
+• The twin flags recordings it cannot explain; 22% of 3,049 real windows pass every check
+• Each twin reproduces its own recording far better than another recording's twin (91% vs 52% of statistics)
+• Halving excitation silences bursting in every posterior draw; halving inhibition raises synchrony by an uncertain amount
+• Label-free imaging: nuclei-count error 1.8% (published model 4.8%), with calibrated intervals
+
+Code: https://github.com/SanTanBan/neurotwin
+Worked example notebook: https://www.kaggle.com/code/santanubanerjee9/nt-demo
+
+Data: Wagenaar, Pine & Potter (2006), BMC Neuroscience 7:11; Christiansen et al. (2018), Cell 173:792 (CC BY 4.0).
+Narration: synthetic voice (Windows speech, "Microsoft Heera"). Implementation assisted by an AI coding assistant (Anthropic Claude).
+Author: Santanu Banerjee
