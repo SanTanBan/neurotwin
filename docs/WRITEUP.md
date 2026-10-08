@@ -10,7 +10,7 @@ trust it and in-silico experiments whose answers carry their own uncertainty.
 
 ## Demo Video
 
-[YouTube link — about 4.5 minutes]
+[YouTube link — 4 min 19 s]
 
 ## Code Repository Link
 
